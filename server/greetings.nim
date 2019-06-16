@@ -1,2 +1,1 @@
-for i in 0..<10:
-    echo i
+import osproc ; echo countProcessors()

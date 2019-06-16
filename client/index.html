@@ -3,30 +3,22 @@
 <html lang=en>
 <head>
     <meta charset=utf-8>
-    <title>Yo</title>
-    <script type="text/javascript" src="utils.js"></script>
-    <script type="text/javascript" src="planet.js"></script>
-    <script type="text/javascript" src="canvas.js"></script>
-    <script type="text/javascript" src="ui.js"></script>
-    <script type="text/javascript" src="tools.js"></script>
+    <title>Living world</title>
+
+    <script src="https://rawgit.com/kawanet/msgpack-lite/master/dist/msgpack.min.js"></script>
+
+    <script type="text/javascript" src="/utils.js"></script>
+    <script type="text/javascript" src="/canvas.js"></script>
+    <script type="text/javascript" src="/planet.js"></script>
+    <script type="text/javascript" src="/game.js"></script>
 </head>
 <body>
     <div id="app"></div>
     <script>
-        let state = {
-            tool: "draw",
-            type: cell_water,
-            planet: Planet.empty(60, 30, cell_land)
-        };
-        let app = new UserInterface(state, {
-            tools: {draw},
-            controls: [ToolSelect, ColorSelect],
-            dispatch(action) {
-                state = updateState(state, action);
-                app.syncState(state);
-            }
+        Planet.fromServer(planet => {
+            let app = new Game(planet);
+            document.querySelector("div").appendChild(app.dom);
         });
-        document.querySelector("div").appendChild(app.dom);
     </script>
 </body>
 </html>
