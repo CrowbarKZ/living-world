@@ -19,28 +19,13 @@ class Planet {
         return new Planet(width, height, 0, cells, entities);
     }
 
-    static fromServer(cb) {
-        var oReq = new XMLHttpRequest();
-        oReq.open("GET", "/backend/planet/", true);
-        oReq.responseType = "arraybuffer";
-
-        oReq.onload = function (oEvent) {
-          var arrayBuffer = oReq.response;
-          if (arrayBuffer) {
-            var byteArray = new Uint8Array(arrayBuffer);
-            var data = msgpack.decode(byteArray);
-            var planet = new Planet(data[0][0], data[0][1], data[1], data[2], data[3])
-            cb(planet);
-          }
-        };
-        oReq.send(null);
+    static fromBinary(arrayBuffer) {
+        let byteArray = new Uint8Array(arrayBuffer);
+        let data = msgpack.decode(byteArray);
+        return new Planet(data[0][0], data[0][1], data[1], data[2], data[3])
     }
 
     cell(x, y) {
         return this.cells[x + y * this.width];
-    }
-
-    process() {
-
     }
 }

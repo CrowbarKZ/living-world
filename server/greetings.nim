@@ -1,1 +1,0 @@
-import osproc ; echo countProcessors()

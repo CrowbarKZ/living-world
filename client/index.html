@@ -2,7 +2,7 @@
 <!doctype html>
 <html lang=en>
 <head>
-    <meta charset=utf-8>
+    <meta charset="utf-8">
     <title>Living world</title>
 
     <script src="https://rawgit.com/kawanet/msgpack-lite/master/dist/msgpack.min.js"></script>
@@ -15,10 +15,22 @@
 <body>
     <div id="app"></div>
     <script>
-        Planet.fromServer(planet => {
+        let app = new Game(Planet.createEmptyPlanet);
+        document.querySelector("div").appendChild(app.dom);
+
+        var ws = new WebSocket("ws://localhost/backend/ws", "living-world-default")
+        ws.binaryType = 'arraybuffer';
+        /*ws.onopen = event => {
+            ws.send("get_planet_data");
+        };*/
+        ws.onmessage = event => {
+            let planet = Planet.fromBinary(event.data);
+            app.canvas.syncState(planet);
+        }
+        /*Planet.fromServer(planet => {
             let app = new Game(planet);
-            document.querySelector("div").appendChild(app.dom);
-        });
+
+        });*/
     </script>
 </body>
 </html>
