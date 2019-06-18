@@ -1,8 +1,12 @@
 const scale = 15;
 const cell_colors = {
-        0: "#EAD76E",    // land
-        1: "#20B6EA",    // water
-        2: "#FFFD5C"    // desert
+    0: "#EAD76E",    // land
+    1: "#20B6EA",    // water
+    2: "#FFFD5C"     // desert
+};
+
+const entity_colors = {
+    0: "#5abc28",    // grass
 };
 
 
@@ -23,20 +27,26 @@ class PlanetCanvas {
 }
 
 function drawPlanet(planet, canvas, scale) {
-    canvas.width = planet.width * scale;
-    canvas.height = planet.height * scale;
+    canvas.width = planet.dimensions.x * scale;
+    canvas.height = planet.dimensions.y * scale;
     let cx = canvas.getContext("2d");
 
-    for (let y = 0; y < planet.height; y++) {
-        for (let x = 0; x < planet.width; x++) {
+    for (let y = 0; y < planet.dimensions.y; y++) {
+        for (let x = 0; x < planet.dimensions.x; x++) {
             cx.fillStyle = cell_colors[planet.cell(x, y)];
             cx.fillRect(x * scale, y * scale, scale, scale);
         }
     }
 
     for (let e of planet.entities) {
-        cx.fillStyle = '#FFFF00';
-        cx.fillRect(e.x * scale, e.y * scale, scale, scale);
+        cx.beginPath();
+        cx.arc(e.position.x * scale + scale / 2, e.position.y * scale + scale / 2, scale / 2, 0, 2 * Math.PI, false);
+        cx.fillStyle = entity_colors[e.kind];
+        // cx.fillRect(e.position.x * scale, e.position.y * scale, scale, scale);
+        cx.fill();
+        cx.lineWidth = 1;
+        cx.strokeStyle = 'black';
+        cx.stroke();
     }
 }
 

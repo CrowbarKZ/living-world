@@ -1,34 +1,9 @@
-import random, asynchttpserver, asyncdispatch, asyncnet, strformat
-from times import getTime, toUnix, nanosecond
-
+import random, asynchttpserver, asyncdispatch, asyncnet, strformat, strutils
 import websocket
+import entity, planet
 
-import planet
-
-let now = getTime()
-var generator = initRand(now.toUnix * 1000000000 + now.nanosecond)
 var clients = newSeq[AsyncWebSocket]()
-
-
-proc sendPlanetData(ws: AsyncWebSocket) {.async.} =
-    while true:
-        if ws.sock.isClosed:
-            break
-
-        var planet: Planet = createEmptyPlanet(60, 60)
-        for i in 0..<planet.cells.len:
-            planet.cells[i] = CellType(generator.rand(2))
-
-        try:
-            await ws.sendBinary(planet.toMsgPack)
-        except ValueError:
-            echo fmt"client died, total clients: {clients.len}"
-            return
-
-        echo fmt"sent data to client {ws.sock.getFd.int}, total clients: {clients.len}"
-        await sleepAsync(1000)
-
-    clients.delete(clients.find(ws))
+var p: Planet = createEmptyPlanet(60, 60)
 
 
 proc processRequest(req: Request) {.async, gcsafe.} =
@@ -41,26 +16,32 @@ proc processRequest(req: Request) {.async, gcsafe.} =
             req.client.close()
             return
         else:
-            var key: string = ""
             clients.add(ws)
-            asyncCheck sendPlanetData(ws)
-
             echo fmt"New client, total: {clients.len}"
 
         while true:
             try:
                 let (opcode, data) = await ws.readData()
-                echo "(opcode: ", opcode, ", data length: ", data.len, ")"
-
                 case opcode
                 of Opcode.Text:
-                    discard
+                    let parts: seq[string] = split(data, ":")
+                    case parts[0]:
+                    of "get_planet_data":
+                        p.process
+                        await ws.sendBinary(p.toMsgPack)
+                    of "get_cell_data":
+                        let pos: Vector2 = (parts[1].parseInt, parts[2].parseInt)
+                        let info: string = getCellInfo(p, pos)
+                        await ws.sendText(fmt"energy at {pos} = {info}")
+                    else:
+                        discard
                 of Opcode.Binary:
                     await ws.sendBinary(data)
                 of Opcode.Close:
                     asyncCheck ws.close()
-                    # let (closeCode, reason) = extractCloseData(data)
-                    echo fmt"client closed, total clients: {clients.len}"
+                    clients.delete(clients.find(ws))
+                    let (closeCode, reason) = extractCloseData(data)
+                    echo fmt"client closed {closeCode} {reason}, total clients: {clients.len}"
                 else: discard
             except:
                 echo "encountered exception: ", getCurrentExceptionMsg()

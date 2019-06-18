@@ -15,22 +15,8 @@
 <body>
     <div id="app"></div>
     <script>
-        let app = new Game(Planet.createEmptyPlanet);
+        let app = new Game(Planet.empty(new Vector2(10, 10)));
         document.querySelector("div").appendChild(app.dom);
-
-        var ws = new WebSocket("ws://localhost/backend/ws", "living-world-default")
-        ws.binaryType = 'arraybuffer';
-        /*ws.onopen = event => {
-            ws.send("get_planet_data");
-        };*/
-        ws.onmessage = event => {
-            let planet = Planet.fromBinary(event.data);
-            app.canvas.syncState(planet);
-        }
-        /*Planet.fromServer(planet => {
-            let app = new Game(planet);
-
-        });*/
     </script>
 </body>
 </html>
