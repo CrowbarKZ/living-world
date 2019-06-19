@@ -5,9 +5,10 @@ import entity
 let now = getTime()
 var generator = initRand(now.toUnix * 1000000000 + now.nanosecond)
 
-const grassInterval: uint8 = 5
 let oneDay: Duration = initDuration(days=1)
-
+const spawnIntervals: array[EntityKind, int] = [5, 20, 50]
+const directionChangeInterval: int = 10
+const msPerRound = 500
 
 type
     CellKind* = enum
@@ -19,7 +20,6 @@ type
         cells: seq[CellKind]
         entities: seq[Entity]
         lastProcessed: DateTime
-        grassTimer: uint8
 
 
 proc createEmptyPlanet*(w: int, h: int): Planet =
@@ -32,7 +32,6 @@ proc createEmptyPlanet*(w: int, h: int): Planet =
         cells: cells,
         entities: entities,
         lastProcessed: now().utc,
-        grassTimer: 0.uint8,
     )
 
 
@@ -44,31 +43,104 @@ func entityExists(entities: seq[Entity], pos: Vector2): bool =
     result = false
 
 
-proc find(entities: seq[Entity], pos: Vector2): int =
+proc findEntityIdx(entities: seq[Entity], pos: Vector2): int =
     for i, e in entities.pairs:
-        echo e.position
         if e.position == pos:
             return i
-    result = -1
+    return -1
+
+
+proc isCellPassable*(p: Planet, pos: Vector2): bool =
+    if pos.x >= p.dimensions.x or pos.y >= p.dimensions.y or pos.x < 0 or pos.y < 0:
+        return false
+    return p.cells[pos.x + pos.y * p.dimensions.x] != water
 
 
 proc getCellInfo*(p: Planet, pos: Vector2): string =
-    let idx: int = find(p.entities, pos)
+    let idx: int = findEntityIdx(p.entities, pos)
     if idx >= 0:
         return $p.entities[idx].energy
 
 
+proc stepEntity(p: var Planet, e: var Entity): int =
+    ## process a turn for entity and return an index of entity to delete
+
+    # age
+    inc(e.age)
+
+    # change energy
+    e.addEnergy(energyIncrement[e.kind])
+    if e.energy <= 0:
+        return p.entities.find(e)
+
+    # move and process interactions
+    case e.kind:
+    of grass:
+        discard
+    of sheep:
+        # randomize roaming pattern
+        if p.age mod directionChangeInterval == 0:
+            e.direction = generator.sample(directions)
+
+        let newPos = e.position + e.direction
+        if isCellPassable(p, newPos):
+            let blockingIdx = findEntityIdx(p.entities, newPos)
+            if blockingIdx >= 0:
+                let blocking = p.entities[blockingIdx]
+                case blocking.kind:
+                of grass:
+                    # eat grass
+                    e.addEnergy(blocking.energy)
+                    return blockingIdx
+                of sheep:
+                    # give birth
+                    let birthPos = e.position + e.direction.nextDir
+                    if (isCellPassable(p, birthPos) and
+                        e.canBirth and
+                        blocking.canBirth):
+
+                        echo "gave birth!"
+                        e.energy = int(e.energy / 2)
+                        p.entities[blockingIdx].energy = int(blocking.energy / 2)
+                        p.entities.add(createEntity(sheep, birthPos, generator.sample(directions)))
+                    e.direction = generator.sample(directions)
+                else:
+                    discard
+            else:
+                e.position = newPos
+        else:
+            e.direction = generator.sample(directions)
+    of human:
+        discard
+
+    return -1
+
+
 proc step(p: var Planet) {.discardable.} =
+    # age planet
+    inc(p.age)
+
     # process existing entities
-    for e in p.entities.mitems:
-        step(e)
+    var i: int = 0
+    while i < p.entities.len:
+        let delIdx = stepEntity(p, p.entities[i])
+        if delIdx > 0:
+            p.entities.delete(delIdx)
+        else:
+            inc(i)
 
     # create grass if needed and the cell is free
     var pos: Vector2 = (generator.rand(p.dimensions.x - 1), generator.rand(p.dimensions.y - 1))
     if not entityExists(p.entities, pos):
-        if p.grassTimer mod grassInterval == 0:
-            p.entities.add(createEntity(pos, grass))
-        p.grassTimer += 1
+        if p.age mod spawnIntervals[grass] == 0:
+            p.entities.add(createEntity(grass, pos, generator.sample(directions)))
+
+
+    # create sheep if needed and the cell is free
+    pos = (generator.rand(p.dimensions.x - 1), generator.rand(p.dimensions.y - 1))
+    if not entityExists(p.entities, pos):
+        if p.age mod spawnIntervals[sheep] == 0:
+            p.entities.add(createEntity(sheep, pos, generator.sample(directions)))
 
 
 proc process*(p: var Planet) {.discardable.} =
@@ -77,7 +149,7 @@ proc process*(p: var Planet) {.discardable.} =
     if dt > oneDay:
         dt = oneDay
 
-    let numsteps = (dt.inMilliseconds.int / 1000).round.int
+    let numsteps = (dt.inMilliseconds.int / msPerRound).round.int
     if numsteps == 0:
         return
 

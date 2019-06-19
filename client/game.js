@@ -7,7 +7,7 @@ class Game {
             ws.send("get_planet_data");
             setInterval(() => {
                 ws.send("get_planet_data");
-            }, 1000);
+            }, 500);
         };
         ws.onmessage = event => {
             if (event.data instanceof ArrayBuffer) {

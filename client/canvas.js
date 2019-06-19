@@ -7,6 +7,7 @@ const cell_colors = {
 
 const entity_colors = {
     0: "#5abc28",    // grass
+    1: "#f6f7f4",    // sheep
 };
 
 
@@ -42,8 +43,8 @@ function drawPlanet(planet, canvas, scale) {
         cx.beginPath();
         cx.arc(e.position.x * scale + scale / 2, e.position.y * scale + scale / 2, scale / 2, 0, 2 * Math.PI, false);
         cx.fillStyle = entity_colors[e.kind];
-        // cx.fillRect(e.position.x * scale, e.position.y * scale, scale, scale);
         cx.fill();
+
         cx.lineWidth = 1;
         cx.strokeStyle = 'black';
         cx.stroke();
