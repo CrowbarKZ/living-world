@@ -1,9 +1,12 @@
-import times, typetraits, random, math
-import msgpack4nim
-import entity
+import times, typetraits, random, math, json
+import msgpack4nim, perlin
+import vector, entity
 
+randomize()
 let now = getTime()
-var generator = initRand(now.toUnix * 1000000000 + now.nanosecond)
+let seed = now.toUnix + now.nanosecond
+var generator = initRand(seed)
+let noise = newNoise(seed.uint32, 1, 0.5)
 
 let oneDay: Duration = initDuration(days=1)
 const spawnIntervals: array[EntityKind, int] = [5, 20, 50]
@@ -12,7 +15,7 @@ const msPerRound = 500
 
 type
     CellKind* = enum
-        land, water, desert
+        desert, land, water
 
     Planet* = tuple
         dimensions: Vector2
@@ -22,10 +25,25 @@ type
         lastProcessed: DateTime
 
 
+func noiseToCell(f: float): CellKind =
+    ## converts perlin noise output 0..1 float to CellKind
+    if f < 0.4:
+        return desert
+    elif f >= 0.4 and f <= 0.7:
+        return land
+    else:
+        return water
+
+
 proc createEmptyPlanet*(w: int, h: int): Planet =
     let dimensions = (w, h)
     let entities: seq[Entity] = newSeq[Entity]()
     var cells: seq[CellKind] = newSeq[CellKind](w * h)
+
+    for x in 0..<w:
+        for y in 0..<h:
+            cells[x + y * w] = noise.perlin(x, y).noiseToCell
+
     result = (
         dimensions: dimensions,
         age: 0,
@@ -35,14 +53,6 @@ proc createEmptyPlanet*(w: int, h: int): Planet =
     )
 
 
-func entityExists(entities: seq[Entity], pos: Vector2): bool =
-    for e in entities:
-        if e.position == pos:
-            result = true
-            return result
-    result = false
-
-
 proc findEntityIdx(entities: seq[Entity], pos: Vector2): int =
     for i, e in entities.pairs:
         if e.position == pos:
@@ -50,16 +60,45 @@ proc findEntityIdx(entities: seq[Entity], pos: Vector2): int =
     return -1
 
 
-proc isCellPassable*(p: Planet, pos: Vector2): bool =
+func entityExists(entities: seq[Entity], pos: Vector2): bool =
+    return entities.findEntityIdx(pos) >= 0
+
+
+func getCell(p: Planet, pos: Vector2): CellKind =
     if pos.x >= p.dimensions.x or pos.y >= p.dimensions.y or pos.x < 0 or pos.y < 0:
-        return false
-    return p.cells[pos.x + pos.y * p.dimensions.x] != water
+        return water
+    return p.cells[pos.x + pos.y * p.dimensions.x]
 
 
-proc getCellInfo*(p: Planet, pos: Vector2): string =
-    let idx: int = findEntityIdx(p.entities, pos)
+proc setCell*(p: var Planet, pos: Vector2, kind: CellKind) {.discardable.} =
+    if pos.x >= p.dimensions.x or pos.y >= p.dimensions.y or pos.x < 0 or pos.y < 0:
+        return
+
+    if p.cells[pos.x + pos.y * p.dimensions.x] == kind:
+        return
+
+    # delete entities at that pos
+    let idx = p.entities.findEntityIdx(pos)
     if idx >= 0:
-        return $p.entities[idx].energy
+        p.entities.delete(idx)
+    p.cells[pos.x + pos.y * p.dimensions.x] = kind
+
+
+
+func getCellJson*(p: Planet, pos: Vector2): JsonNode =
+    result = %*{"pos": pos, "cell_kind": p.getCell(pos)}
+
+    let idx = findEntityIdx(p.entities, pos)
+    if idx >= 0:
+        result["entity"] = %p.entities[idx]
+
+
+func isCellPassable(p: Planet, pos: Vector2): bool =
+    return p.getCell(pos) != water
+
+
+func isCellGrowable(p: Planet, pos: Vector2): bool =
+    return p.getCell(pos) == land
 
 
 proc stepEntity(p: var Planet, e: var Entity): int =
@@ -131,14 +170,14 @@ proc step(p: var Planet) {.discardable.} =
 
     # create grass if needed and the cell is free
     var pos: Vector2 = (generator.rand(p.dimensions.x - 1), generator.rand(p.dimensions.y - 1))
-    if not entityExists(p.entities, pos):
+    if p.isCellGrowable(pos) and not entityExists(p.entities, pos):
         if p.age mod spawnIntervals[grass] == 0:
             p.entities.add(createEntity(grass, pos, generator.sample(directions)))
 
 
     # create sheep if needed and the cell is free
     pos = (generator.rand(p.dimensions.x - 1), generator.rand(p.dimensions.y - 1))
-    if not entityExists(p.entities, pos):
+    if p.isCellPassable(pos) and not entityExists(p.entities, pos):
         if p.age mod spawnIntervals[sheep] == 0:
             p.entities.add(createEntity(sheep, pos, generator.sample(directions)))
 
@@ -163,5 +202,9 @@ proc toMsgPack*(p: Planet): string =
 
 
 when isMainModule:
-    var planet = createEmptyPlanet(50, 50)
-    echo planet
+    for y in 0..<60:
+        for x in 0..<60:
+            let value = noise.perlin(x, y)
+
+            stdout.write( int(round(10 * value)) )
+        stdout.write("\n")

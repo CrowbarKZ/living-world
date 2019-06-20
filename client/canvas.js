@@ -1,8 +1,8 @@
-const scale = 15;
+const scale = 10;
 const cell_colors = {
-    0: "#EAD76E",    // land
-    1: "#20B6EA",    // water
-    2: "#FFFD5C"     // desert
+    0: "#FFFD5C",    // desert
+    1: "#EAD76E",    // land
+    2: "#20B6EA"     // water
 };
 
 const entity_colors = {

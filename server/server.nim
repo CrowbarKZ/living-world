@@ -1,9 +1,16 @@
-import random, asynchttpserver, asyncdispatch, asyncnet, strformat, strutils
+import random, asynchttpserver, asyncdispatch, asyncnet, strformat, strutils, json
 import websocket
-import entity, planet
+import entity, planet, vector
 
 var clients = newSeq[AsyncWebSocket]()
 var p: Planet = createEmptyPlanet(60, 60)
+
+type
+    Command = object
+        name: string
+        x: int
+        y: int
+        cellKind: CellKind
 
 
 proc processRequest(req: Request) {.async, gcsafe.} =
@@ -24,17 +31,21 @@ proc processRequest(req: Request) {.async, gcsafe.} =
                 let (opcode, data) = await ws.readData()
                 case opcode
                 of Opcode.Text:
-                    let parts: seq[string] = split(data, ":")
-                    case parts[0]:
+                    let command: Command = parseJson(data).to(Command)
+                    let pos: Vector2 = (command.x, command.y)
+
+                    case command.name:
                     of "get_planet_data":
                         p.process
                         await ws.sendBinary(p.toMsgPack)
-                    of "get_cell_data":
-                        let pos: Vector2 = (parts[1].parseInt, parts[2].parseInt)
-                        let info: string = getCellInfo(p, pos)
-                        await ws.sendText(fmt"energy at {pos} = {info}")
+                    of "get_cell_info":
+                        await ws.sendText($p.getCellJson(pos))
+                    of "change_cell":
+                        p.setCell(pos, command.cellKind)
+                        await ws.sendBinary(p.toMsgPack)
                     else:
-                        discard
+                        echo fmt"received command: {command.name}"
+
                 of Opcode.Binary:
                     await ws.sendBinary(data)
                 of Opcode.Close:
