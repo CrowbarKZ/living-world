@@ -1,9 +1,9 @@
 import random, asynchttpserver, asyncdispatch, asyncnet, strformat, strutils, json
 import websocket
-import entity, planet, vector
+import entity, planet, vector, cell
 
 var clients = newSeq[AsyncWebSocket]()
-var p: Planet = createEmptyPlanet(60, 60)
+var p: Planet = emptyPlanet(60, 60)
 
 type
     Command = object
@@ -41,8 +41,8 @@ proc processRequest(req: Request) {.async, gcsafe.} =
                     of "get_cell_info":
                         await ws.sendText($p.getCellJson(pos))
                     of "change_cell":
-                        p.setCell(pos, command.cellKind)
-                        await ws.sendBinary(p.toMsgPack)
+                        p.setCellKind(pos, command.cellKind)
+                        echo "processed command!"
                     else:
                         echo fmt"received command: {command.name}"
 
@@ -61,7 +61,6 @@ proc processRequest(req: Request) {.async, gcsafe.} =
 proc main() =
     var server = newAsyncHttpServer()
     waitFor server.serve(Port(8000), processRequest)
-
 
 
 when isMainModule:

@@ -5,12 +5,14 @@ type
     EntityKind* = enum
         grass, sheep, human
 
-    Entity* = tuple
-        kind: EntityKind
-        position: Vector2
-        direction: Vector2
-        energy: int
-        age: int
+    EntityObj = object
+        kind*: EntityKind
+        position*: Vector2
+        direction*: Vector2
+        energy*: int
+        age*: int
+
+    Entity* = ref EntityObj
 
 const initialEnergy*: array[EntityKind, int] = [5, 50, 50]
 const energyIncrement*: array[EntityKind, int] = [5, -1, -1]
@@ -28,8 +30,8 @@ proc `%`*(e: Entity): JsonNode =
     }
 
 
-proc createEntity*(kind: EntityKind, pos: Vector2, dir: Vector2): Entity =
-    result = (
+proc newEntity*(kind: EntityKind, pos: Vector2, dir: Vector2): Entity =
+    return Entity(
         kind: kind,
         position: pos,
         direction: dir,
@@ -38,7 +40,7 @@ proc createEntity*(kind: EntityKind, pos: Vector2, dir: Vector2): Entity =
     )
 
 
-proc addEnergy*(e: var Entity, amount: int) {.discardable.} =
+proc addEnergy*(e: Entity, amount: int) {.discardable.} =
     e.energy += amount
     if e.energy > maxEnergy[e.kind]:
         e.energy = maxEnergy[e.kind]

@@ -13,7 +13,7 @@ class Vector2 {
 class Planet {
     constructor(dimensions, age, cells, entities) {
         this.dimensions = dimensions;
-        this.cells = cells;
+        this.cells = cells.map(e => e[0]);
         this.entities = entities.map(e => Entity.fromArray(e));
         this.age = age;
     }

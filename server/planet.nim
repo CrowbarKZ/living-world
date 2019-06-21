@@ -1,6 +1,6 @@
 import times, typetraits, random, math, json
 import msgpack4nim, perlin
-import vector, entity
+import vector, entity, cell
 
 randomize()
 let now = getTime()
@@ -14,35 +14,22 @@ const directionChangeInterval: int = 10
 const msPerRound = 500
 
 type
-    CellKind* = enum
-        desert, land, water
-
     Planet* = tuple
         dimensions: Vector2
         age: int
-        cells: seq[CellKind]
+        cells: seq[Cell]
         entities: seq[Entity]
         lastProcessed: DateTime
 
 
-func noiseToCell(f: float): CellKind =
-    ## converts perlin noise output 0..1 float to CellKind
-    if f < 0.4:
-        return desert
-    elif f >= 0.4 and f <= 0.7:
-        return land
-    else:
-        return water
-
-
-proc createEmptyPlanet*(w: int, h: int): Planet =
+proc emptyPlanet*(w: int, h: int): Planet =
     let dimensions = (w, h)
     let entities: seq[Entity] = newSeq[Entity]()
-    var cells: seq[CellKind] = newSeq[CellKind](w * h)
+    var cells: seq[Cell] = newSeq[Cell](w * h)
 
     for x in 0..<w:
         for y in 0..<h:
-            cells[x + y * w] = noise.perlin(x, y).noiseToCell
+            cells[x + y * w] = (kind: noise.perlin(x, y).noiseToCellKind, entityRef: nil)
 
     result = (
         dimensions: dimensions,
@@ -53,52 +40,46 @@ proc createEmptyPlanet*(w: int, h: int): Planet =
     )
 
 
-proc findEntityIdx(entities: seq[Entity], pos: Vector2): int =
-    for i, e in entities.pairs:
-        if e.position == pos:
-            return i
-    return -1
+proc createEntity(p: var Planet, kind: EntityKind, pos: Vector2, dir: Vector2) {.discardable.} =
+    let e: Entity = newEntity(kind, pos, dir)
+    p.entities.add(e)
+    p.cells[pos.x + pos.y * p.dimensions.x].entityRef = e
 
 
-func entityExists(entities: seq[Entity], pos: Vector2): bool =
-    return entities.findEntityIdx(pos) >= 0
-
-
-func getCell(p: Planet, pos: Vector2): CellKind =
+func getCell(p: Planet, pos: Vector2): Cell =
     if pos.x >= p.dimensions.x or pos.y >= p.dimensions.y or pos.x < 0 or pos.y < 0:
-        return water
+        return emptyCell()
     return p.cells[pos.x + pos.y * p.dimensions.x]
 
 
-proc setCell*(p: var Planet, pos: Vector2, kind: CellKind) {.discardable.} =
+func mgetCell(p: var Planet, pos: Vector2): var Cell =
+    return p.cells[pos.x + pos.y * p.dimensions.x]
+
+
+proc deleteEntity(p: var Planet, pos: Vector2, idx: int) {.discardable} =
+    ## deletes entity reference from cells and entities
+    p.mgetCell(pos).entityRef = nil
+    p.entities.delete(idx)
+
+
+proc setCellKind*(p: var Planet, pos: Vector2, kind: CellKind) {.discardable.} =
     if pos.x >= p.dimensions.x or pos.y >= p.dimensions.y or pos.x < 0 or pos.y < 0:
         return
 
-    if p.cells[pos.x + pos.y * p.dimensions.x] == kind:
-        return
-
-    # delete entities at that pos
-    let idx = p.entities.findEntityIdx(pos)
-    if idx >= 0:
-        p.entities.delete(idx)
-    p.cells[pos.x + pos.y * p.dimensions.x] = kind
-
+    var cell = p.mgetCell(pos)
+    cell.kind = kind
+    cell.entityRef = nil
 
 
 func getCellJson*(p: Planet, pos: Vector2): JsonNode =
-    result = %*{"pos": pos, "cell_kind": p.getCell(pos)}
+    let cell = p.getCell(pos)
+    result = %*{
+        "pos": pos,
+        "cell_kind": cell.kind,
+    }
 
-    let idx = findEntityIdx(p.entities, pos)
-    if idx >= 0:
-        result["entity"] = %p.entities[idx]
-
-
-func isCellPassable(p: Planet, pos: Vector2): bool =
-    return p.getCell(pos) != water
-
-
-func isCellGrowable(p: Planet, pos: Vector2): bool =
-    return p.getCell(pos) == land
+    if cell.entityRef != nil:
+        result["entity"] = %cell.entityRef
 
 
 proc stepEntity(p: var Planet, e: var Entity): int =
@@ -120,28 +101,25 @@ proc stepEntity(p: var Planet, e: var Entity): int =
         # randomize roaming pattern
         if p.age mod directionChangeInterval == 0:
             e.direction = generator.sample(directions)
-
         let newPos = e.position + e.direction
-        if isCellPassable(p, newPos):
-            let blockingIdx = findEntityIdx(p.entities, newPos)
-            if blockingIdx >= 0:
-                let blocking = p.entities[blockingIdx]
-                case blocking.kind:
+        let targetCell = p.getCell(newPos)
+
+        if targetCell.isPassable:
+            if not targetCell.isFree:
+                case targetCell.entityRef.kind:
                 of grass:
                     # eat grass
-                    e.addEnergy(blocking.energy)
-                    return blockingIdx
+                    e.addEnergy(targetCell.entityRef.energy)
+                    return p.entities.find(targetCell.entityRef)
                 of sheep:
                     # give birth
                     let birthPos = e.position + e.direction.nextDir
-                    if (isCellPassable(p, birthPos) and
-                        e.canBirth and
-                        blocking.canBirth):
-
+                    let birthCell = p.getCell(birthPos)
+                    if (birthCell.isPassable and e.canBirth and targetCell.entityRef.canBirth):
                         echo "gave birth!"
                         e.energy = int(e.energy / 2)
-                        p.entities[blockingIdx].energy = int(blocking.energy / 2)
-                        p.entities.add(createEntity(sheep, birthPos, generator.sample(directions)))
+                        targetCell.entityRef.energy = int(targetCell.entityRef.energy / 2)
+                        p.createEntity(sheep, birthPos, generator.sample(directions))
                     e.direction = generator.sample(directions)
                 else:
                     discard
@@ -162,24 +140,27 @@ proc step(p: var Planet) {.discardable.} =
     # process existing entities
     var i: int = 0
     while i < p.entities.len:
-        let delIdx = stepEntity(p, p.entities[i])
+        var entity = p.entities[i]
+        let delIdx = stepEntity(p, entity)
         if delIdx > 0:
-            p.entities.delete(delIdx)
+            p.deleteEntity(entity.position, delIdx)
         else:
             inc(i)
 
     # create grass if needed and the cell is free
     var pos: Vector2 = (generator.rand(p.dimensions.x - 1), generator.rand(p.dimensions.y - 1))
-    if p.isCellGrowable(pos) and not entityExists(p.entities, pos):
+    var cell = p.getCell(pos)
+    if cell.isGrowable and cell.isFree:
         if p.age mod spawnIntervals[grass] == 0:
-            p.entities.add(createEntity(grass, pos, generator.sample(directions)))
+            p.createEntity(grass, pos, directions[north])
 
 
     # create sheep if needed and the cell is free
     pos = (generator.rand(p.dimensions.x - 1), generator.rand(p.dimensions.y - 1))
-    if p.isCellPassable(pos) and not entityExists(p.entities, pos):
+    cell = p.getCell(pos)
+    if cell.isPassable and cell.isFree:
         if p.age mod spawnIntervals[sheep] == 0:
-            p.entities.add(createEntity(sheep, pos, generator.sample(directions)))
+            p.createEntity(sheep, pos, generator.sample(directions))
 
 
 proc process*(p: var Planet) {.discardable.} =
@@ -192,6 +173,9 @@ proc process*(p: var Planet) {.discardable.} =
     if numsteps == 0:
         return
 
+    if numsteps > 1:
+        echo "processing steps ", numsteps
+
     for i in 0..<numsteps:
         step(p)
     p.lastProcessed = newNow
@@ -202,9 +186,10 @@ proc toMsgPack*(p: Planet): string =
 
 
 when isMainModule:
-    for y in 0..<60:
-        for x in 0..<60:
-            let value = noise.perlin(x, y)
+    let t0 = cpuTime()
 
-            stdout.write( int(round(10 * value)) )
-        stdout.write("\n")
+    var p: Planet = emptyPlanet(1000, 1000);
+    for i in 0..100000:
+        step(p)
+
+    echo cpuTime() - t0

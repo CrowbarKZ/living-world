@@ -28,6 +28,7 @@ class Game {
             }
         }
 
+        // create canvas and set mouse events
         this.canvas = new PlanetCanvas(planet, pos => {
             let command_name = toolSelect.value
             let command = {
@@ -38,7 +39,6 @@ class Game {
             }
 
             if (command_name = "change_cell") command["cellKind"] = "water"
-
             ws.send(JSON.stringify(command));
 
             // return on move func

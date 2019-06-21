@@ -1,14 +1,14 @@
-const scale = 10;
+const scale = 12;
 const cell_colors = {
     0: "#FFFD5C",    // desert
     1: "#EAD76E",    // land
     2: "#20B6EA"     // water
 };
 
-const entity_colors = {
-    0: "#5abc28",    // grass
-    1: "#f6f7f4",    // sheep
-};
+const entity_image_urls = {
+    0: "/assets/Grass_001.svg",
+    1: "/assets/Sheep_001.svg"
+}
 
 
 class PlanetCanvas {
@@ -40,14 +40,9 @@ function drawPlanet(planet, canvas, scale) {
     }
 
     for (let e of planet.entities) {
-        cx.beginPath();
-        cx.arc(e.position.x * scale + scale / 2, e.position.y * scale + scale / 2, scale / 2, 0, 2 * Math.PI, false);
-        cx.fillStyle = entity_colors[e.kind];
-        cx.fill();
-
-        cx.lineWidth = 1;
-        cx.strokeStyle = 'black';
-        cx.stroke();
+        let img = new Image();
+        img.src = entity_image_urls[e.kind];
+        cx.drawImage(img, e.position.x * scale, e.position.y * scale, scale, scale);
     }
 }
 
