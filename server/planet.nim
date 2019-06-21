@@ -20,6 +20,7 @@ type
         cells: seq[Cell]
         entities: seq[Entity]
         lastProcessed: DateTime
+        paused: bool
 
 
 proc emptyPlanet*(w: int, h: int): Planet =
@@ -37,7 +38,17 @@ proc emptyPlanet*(w: int, h: int): Planet =
         cells: cells,
         entities: entities,
         lastProcessed: now().utc,
+        paused: false,
     )
+
+
+proc pause*(p: var Planet) {.discardable.} =
+    p.paused = true
+
+
+proc unpause*(p: var Planet) {.discardable.} =
+    p.paused = false
+    p.lastProcessed = now().utc
 
 
 proc createEntity(p: var Planet, kind: EntityKind, pos: Vector2, dir: Vector2) {.discardable.} =
@@ -62,13 +73,21 @@ proc deleteEntity(p: var Planet, pos: Vector2, idx: int) {.discardable} =
     p.entities.delete(idx)
 
 
+proc moveEntity(p: var Planet, e: Entity, newPos: Vector2) {.discardable} =
+    ## moves entity to a new position
+    p.mgetCell(e.position).entityRef = nil
+    e.position = newPos
+    p.mgetCell(newPos).entityRef = e
+
+
 proc setCellKind*(p: var Planet, pos: Vector2, kind: CellKind) {.discardable.} =
+    ## also deletes entities at pos
     if pos.x >= p.dimensions.x or pos.y >= p.dimensions.y or pos.x < 0 or pos.y < 0:
         return
-
-    var cell = p.mgetCell(pos)
-    cell.kind = kind
-    cell.entityRef = nil
+    p.mgetCell(pos).kind = kind
+    let idx = p.entities.find(p.getCell(pos).entityRef)
+    if idx >= 0:
+        p.deleteEntity(pos, idx)
 
 
 func getCellJson*(p: Planet, pos: Vector2): JsonNode =
@@ -124,7 +143,7 @@ proc stepEntity(p: var Planet, e: var Entity): int =
                 else:
                     discard
             else:
-                e.position = newPos
+                p.moveEntity(e, newPos)
         else:
             e.direction = generator.sample(directions)
     of human:
@@ -164,6 +183,9 @@ proc step(p: var Planet) {.discardable.} =
 
 
 proc process*(p: var Planet) {.discardable.} =
+    if p.paused:
+        return
+
     let newNow: DateTime = now().utc
     var dt: Duration = newNow - p.lastProcessed
     if dt > oneDay:

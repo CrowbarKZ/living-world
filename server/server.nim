@@ -5,13 +5,6 @@ import entity, planet, vector, cell
 var clients = newSeq[AsyncWebSocket]()
 var p: Planet = emptyPlanet(60, 60)
 
-type
-    Command = object
-        name: string
-        x: int
-        y: int
-        cellKind: CellKind
-
 
 proc processRequest(req: Request) {.async, gcsafe.} =
     if req.url.path == "/backend/ws":
@@ -31,20 +24,25 @@ proc processRequest(req: Request) {.async, gcsafe.} =
                 let (opcode, data) = await ws.readData()
                 case opcode
                 of Opcode.Text:
-                    let command: Command = parseJson(data).to(Command)
-                    let pos: Vector2 = (command.x, command.y)
+                    let command = parseJson(data)
 
-                    case command.name:
+                    case command["name"].getStr:
                     of "get_planet_data":
                         p.process
                         await ws.sendBinary(p.toMsgPack)
+                    of "pause":
+                        p.pause
+                    of "unpause":
+                        p.unpause
                     of "get_cell_info":
+                        let pos: Vector2 = (command["x"].getInt, command["y"].getInt)
                         await ws.sendText($p.getCellJson(pos))
                     of "change_cell":
-                        p.setCellKind(pos, command.cellKind)
-                        echo "processed command!"
+                        let pos: Vector2 = (command["x"].getInt, command["y"].getInt)
+                        p.setCellKind(pos, command["cellKind"].getInt.CellKind)
                     else:
-                        echo fmt"received command: {command.name}"
+                        let cmdName = command["name"].getStr
+                        echo fmt"received command: {cmdName}"
 
                 of Opcode.Binary:
                     await ws.sendBinary(data)
