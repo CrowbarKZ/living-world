@@ -2,8 +2,9 @@ import random, asynchttpserver, asyncdispatch, asyncnet, strformat, strutils, js
 import websocket
 import entity, planet, vector, cell
 
-var clients = newSeq[AsyncWebSocket]()
-var p: Planet = emptyPlanet(60, 60)
+var clients {.threadvar.}: seq[AsyncWebSocket]
+var p {.threadvar.}: Planet
+var server: AsyncHttpServer = newAsyncHttpServer()
 
 
 proc processRequest(req: Request) {.async, gcsafe.} =
@@ -57,9 +58,10 @@ proc processRequest(req: Request) {.async, gcsafe.} =
 
 
 proc main() =
-    var server = newAsyncHttpServer()
+    clients = newSeq[AsyncWebSocket]()
+    p = emptyPlanet(60, 60)
     waitFor server.serve(Port(8000), processRequest)
 
 
 when isMainModule:
-   main()
+    main()

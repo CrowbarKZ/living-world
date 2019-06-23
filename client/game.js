@@ -30,7 +30,7 @@ class Game {
             ws.send(JSON.stringify(cmd));
             setInterval(() => {
                 if (!paused) ws.send(JSON.stringify(cmd));
-            }, 500);
+            }, 100);
         };
         ws.onmessage = event => {
             if (event.data instanceof ArrayBuffer) {

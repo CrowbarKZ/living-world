@@ -45,6 +45,35 @@
     <script>
         let app = new Game(Planet.empty(new Vector2(10, 10)));
         document.querySelector("div#app").appendChild(app.dom);
+
+        let prevUpdate = Date.now();
+        function draw(start) {
+            let dt = Date.now() - prevUpdate;
+
+            let planet = app.canvas.planet;
+            let canvas = app.canvas.dom;
+            let cx = canvas.getContext("2d");
+
+            canvas.width = planet.dimensions.x * scale;
+            canvas.height = planet.dimensions.y * scale;
+
+            for (let y = 0; y < planet.dimensions.y; y++) {
+                for (let x = 0; x < planet.dimensions.x; x++) {
+                    cx.fillStyle = cell_colors[planet.cell(x, y)];
+                    cx.fillRect(x * scale, y * scale, scale, scale);
+                }
+            }
+
+            for (let e of planet.entities) {
+                cx.fillStyle = entity_colors[e.kind];
+                // cx.fillRect(e.position.x * scale + 2, e.position.y * scale + 2, scale - 4, scale - 4);
+                cx.drawImage(entity_images[e.kind], e.position.x * scale, e.position.y * scale);
+            }
+
+            prevUpdate = Date.now();
+            requestAnimationFrame(draw);
+        }
+        requestAnimationFrame(draw);
     </script>
 </body>
 </html>

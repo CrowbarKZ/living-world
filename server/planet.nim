@@ -11,7 +11,7 @@ let noise = newNoise(seed.uint32, 1, 0.5)
 let oneDay: Duration = initDuration(days=1)
 const spawnIntervals: array[EntityKind, int] = [5, 20, 50]
 const directionChangeInterval: int = 10
-const msPerRound = 500
+const msPerRound = 100
 
 type
     Planet* = tuple
@@ -110,6 +110,7 @@ proc stepEntity(p: var Planet, e: var Entity): int =
     # change energy
     e.addEnergy(energyIncrement[e.kind])
     if e.energy <= 0:
+        echo "died from starvation :(!"
         return p.entities.find(e)
 
     # move and process interactions
@@ -136,8 +137,8 @@ proc stepEntity(p: var Planet, e: var Entity): int =
                     let birthCell = p.getCell(birthPos)
                     if (birthCell.isPassable and e.canBirth and targetCell.entityRef.canBirth):
                         echo "gave birth!"
-                        e.energy = int(e.energy / 2)
-                        targetCell.entityRef.energy = int(targetCell.entityRef.energy / 2)
+                        e.energy = int(e.energy.float * 0.3)
+                        targetCell.entityRef.energy = int(targetCell.entityRef.energy.float * 0.3)
                         p.createEntity(sheep, birthPos, generator.sample(directions))
                     e.direction = generator.sample(directions)
                 else:

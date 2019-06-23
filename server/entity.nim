@@ -14,10 +14,10 @@ type
 
     Entity* = ref EntityObj
 
-const initialEnergy*: array[EntityKind, int] = [5, 50, 50]
-const energyIncrement*: array[EntityKind, int] = [5, -1, -1]
-const maxEnergy*: array[EntityKind, int] = [100, 100, 100]
-const birthingAge: array[EntityKind, int] = [50, 50, 50]
+const initialEnergy*: array[EntityKind, int] = [5, 20, 20]
+const energyIncrement*: array[EntityKind, int] = [1, -1, -1]
+const maxEnergy*: array[EntityKind, int] = [20, 200, 200]
+const birthingAge: array[EntityKind, int] = [50, 100, 100]
 
 
 proc `%`*(e: Entity): JsonNode =
@@ -47,4 +47,4 @@ proc addEnergy*(e: Entity, amount: int) {.discardable.} =
 
 
 proc canBirth*(e: Entity): bool =
-    return e.age > birthingAge[e.kind] and e.energy > int(maxEnergy[e.kind] / 2)
+    return e.age > birthingAge[e.kind] and e.energy > int(maxEnergy[e.kind].float * 0.75)

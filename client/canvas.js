@@ -1,13 +1,24 @@
 const scale = 12;
 const cell_colors = {
-    0: "#FFFD5C",    // desert
-    1: "#EAD76E",    // land
-    2: "#20B6EA"     // water
+    0: "#b75800",    // desert
+    1: "#ead76e",    // land
+    2: "#20b6ea"     // water
 };
 
-const entity_image_urls = {
-    0: "/assets/Grass_001.svg",
-    1: "/assets/Sheep_001.svg"
+let sheepImg = new Image();
+sheepImg.src = "/assets/Sheep_001.svg";
+
+let grassImg = new Image();
+grassImg.src = "/assets/Grass_001.svg"
+
+const entity_images = {
+    0: grassImg,
+    1: sheepImg,
+}
+
+const entity_colors = {
+    0: "#0c9b1d",
+    1: "#ffffff",
 }
 
 
@@ -21,31 +32,9 @@ class PlanetCanvas {
     }
 
     syncState(planet) {
-        if (this.planet == planet) return;
         this.planet = planet;
-        drawPlanet(this.planet, this.dom, scale);
     }
 }
-
-function drawPlanet(planet, canvas, scale) {
-    canvas.width = planet.dimensions.x * scale;
-    canvas.height = planet.dimensions.y * scale;
-    let cx = canvas.getContext("2d");
-
-    for (let y = 0; y < planet.dimensions.y; y++) {
-        for (let x = 0; x < planet.dimensions.x; x++) {
-            cx.fillStyle = cell_colors[planet.cell(x, y)];
-            cx.fillRect(x * scale, y * scale, scale, scale);
-        }
-    }
-
-    for (let e of planet.entities) {
-        let img = new Image();
-        img.src = entity_image_urls[e.kind];
-        cx.drawImage(img, e.position.x * scale, e.position.y * scale, scale, scale);
-    }
-}
-
 
 function pointerPosition(pos, domNode) {
     let rect = domNode.getBoundingClientRect();
@@ -79,8 +68,7 @@ PlanetCanvas.prototype.touch = function(startEvent, onDown) {
     startEvent.preventDefault();
     if (!onMove) return;
     let move = moveEvent => {
-        let newPos = pointerPosition(moveEvent.touches[0],
-                                                                 this.dom);
+        let newPos = pointerPosition(moveEvent.touches[0], this.dom);
         if (newPos.x == pos.x && newPos.y == pos.y) return;
         pos = newPos;
         onMove(newPos);
