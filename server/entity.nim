@@ -1,4 +1,4 @@
-import json
+import json, oids
 import vector
 
 type
@@ -11,6 +11,7 @@ type
         direction*: Vector2
         energy*: int
         age*: int
+        oid: Oid
 
     Entity* = ref EntityObj
 
@@ -27,6 +28,7 @@ proc `%`*(e: Entity): JsonNode =
         "direction": e.direction,
         "energy": e.energy,
         "age": e.age,
+        "oid": $e.oid,
     }
 
 
@@ -37,6 +39,7 @@ proc newEntity*(kind: EntityKind, pos: Vector2, dir: Vector2): Entity =
         direction: dir,
         energy: initialEnergy[kind],
         age: 0,
+        oid: genOid(),
     )
 
 

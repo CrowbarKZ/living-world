@@ -1,8 +1,8 @@
 const scale = 12;
 const cell_colors = {
-    0: "#b75800",    // desert
-    1: "#ead76e",    // land
-    2: "#20b6ea"     // water
+    "desert": "#b75800",
+    "land": "#ead76e",
+    "water": "#20b6ea"
 };
 
 let sheepImg = new Image();
@@ -12,23 +12,23 @@ let grassImg = new Image();
 grassImg.src = "/assets/Grass_001.svg"
 
 const entity_images = {
-    0: grassImg,
-    1: sheepImg,
+    "grass": grassImg,
+    "sheep": sheepImg,
 }
 
 const entity_colors = {
-    0: "#0c9b1d",
-    1: "#ffffff",
+    "grass": "#0c9b1d",
+    "sheep": "#ffffff",
 }
 
 
 class PlanetCanvas {
-    constructor(planet, pointerDown) {
+    constructor(pointerDown) {
         this.dom = elt("canvas", {
             onmousedown: event => this.mouse(event, pointerDown),
             ontouchstart: event => this.touch(event, pointerDown)
         });
-        this.syncState(planet);
+        this.planet = null;
     }
 
     syncState(planet) {

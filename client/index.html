@@ -13,7 +13,6 @@
 
     <script type="text/javascript" src="/utils.js"></script>
     <script type="text/javascript" src="/canvas.js"></script>
-    <script type="text/javascript" src="/planet.js"></script>
     <script type="text/javascript" src="/game.js"></script>
 </head>
 <body>
@@ -43,14 +42,20 @@
     </div>
 
     <script>
-        let app = new Game(Planet.empty(new Vector2(10, 10)));
+        let app = new Game();
         document.querySelector("div#app").appendChild(app.dom);
 
         let prevUpdate = Date.now();
         function draw(start) {
             let dt = Date.now() - prevUpdate;
 
+
             let planet = app.canvas.planet;
+            if (!planet) {
+                requestAnimationFrame(draw);
+                return;
+            }
+
             let canvas = app.canvas.dom;
             let cx = canvas.getContext("2d");
 
@@ -59,13 +64,13 @@
 
             for (let y = 0; y < planet.dimensions.y; y++) {
                 for (let x = 0; x < planet.dimensions.x; x++) {
-                    cx.fillStyle = cell_colors[planet.cell(x, y)];
+                    cx.fillStyle = cell_colors[get_cell(planet, x, y)];
                     cx.fillRect(x * scale, y * scale, scale, scale);
                 }
             }
 
             for (let e of planet.entities) {
-                cx.fillStyle = entity_colors[e.kind];
+                // cx.fillStyle = entity_colors[e.kind];
                 // cx.fillRect(e.position.x * scale + 2, e.position.y * scale + 2, scale - 4, scale - 4);
                 cx.drawImage(entity_images[e.kind], e.position.x * scale, e.position.y * scale);
             }

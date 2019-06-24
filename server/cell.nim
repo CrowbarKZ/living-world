@@ -11,6 +11,10 @@ type
         entityRef: Entity
 
 
+proc `%`*(c: Cell): JsonNode =
+    return %c.kind
+
+
 func emptyCell*(): Cell =
     return (kind: water, entityRef: nil)
 

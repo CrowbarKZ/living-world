@@ -1,5 +1,5 @@
 class Game {
-    constructor(planet) {
+    constructor() {
         var ws = new WebSocket("ws://localhost/backend/ws", "living-world-default")
         ws.binaryType = 'arraybuffer';
 
@@ -33,17 +33,17 @@ class Game {
             }, 100);
         };
         ws.onmessage = event => {
-            if (event.data instanceof ArrayBuffer) {
-                let planet = Planet.fromBinary(event.data);
-                app.canvas.syncState(planet);
+            let response = JSON.parse(event.data);
+            if (response.type == "full_update") {
+                this.canvas.syncState(response.data);
             } else {
-                let beauty = JSON.stringify(JSON.parse(event.data), null, 4)
+                let beauty = JSON.stringify(response.data, null, 4)
                 responseContainer.value = beauty;
             }
         }
 
         // create canvas and set mouse events
-        this.canvas = new PlanetCanvas(planet, pos => {
+        this.canvas = new PlanetCanvas(pos => {
             let cmd = {"name": toolSelect.value, "x": pos.x, "y": pos.y}
             if (toolSelect.value == "change_cell") cmd["cellKind"] = 2
             ws.send(JSON.stringify(cmd));

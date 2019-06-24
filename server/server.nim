@@ -30,7 +30,12 @@ proc processRequest(req: Request) {.async, gcsafe.} =
                     case command["name"].getStr:
                     of "get_planet_data":
                         p.process
-                        await ws.sendBinary(p.toMsgPack)
+                        let response = %*{
+                            "type": "full_update",
+                            "data": p,
+                        }
+                        await ws.sendText($response)
+                        # await ws.sendBinary(p.toMsgPack)
                     of "pause":
                         p.pause
                     of "unpause":

@@ -23,6 +23,15 @@ type
         paused: bool
 
 
+proc `%`*(p: Planet): JsonNode =
+    return %*{
+        "dimensions": p.dimensions,
+        "age": p.age,
+        "cells": p.cells,
+        "entities": p.entities,
+    }
+
+
 proc emptyPlanet*(w: int, h: int): Planet =
     let dimensions = (w, h)
     let entities: seq[Entity] = newSeq[Entity]()
