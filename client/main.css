@@ -1,3 +1,9 @@
 div#app {
-    overflow: hidden;
+    position: relative;
+    height: 600px;
+    width: 600px;
 }
+
+canvas { position: absolute; top: 0; left: 0; }
+#entity-layer { z-index: 2; }
+#background-layer { z-index: 1; }

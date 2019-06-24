@@ -9,17 +9,18 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mini.css/3.0.1/mini-default.min.css">
     <link rel="stylesheet" href="/main.css">
 
-    <script src="https://rawgit.com/kawanet/msgpack-lite/master/dist/msgpack.min.js"></script>
 
     <script type="text/javascript" src="/utils.js"></script>
-    <script type="text/javascript" src="/canvas.js"></script>
     <script type="text/javascript" src="/game.js"></script>
 </head>
 <body>
     <div class="container">
         <div class="row">
             <div class="card fluid">
-                <div id="app"></div>
+                <div id="app">
+                      <canvas id="entity-layer" width="480" height="320"></canvas>
+                      <canvas id="background-layer" width="480" height="320"></canvas>
+                </div>
             </div>
             <div class="card fluid">
                 <div class="input-group fluid">
@@ -43,42 +44,7 @@
 
     <script>
         let app = new Game();
-        document.querySelector("div#app").appendChild(app.dom);
-
-        let prevUpdate = Date.now();
-        function draw(start) {
-            let dt = Date.now() - prevUpdate;
-
-
-            let planet = app.canvas.planet;
-            if (!planet) {
-                requestAnimationFrame(draw);
-                return;
-            }
-
-            let canvas = app.canvas.dom;
-            let cx = canvas.getContext("2d");
-
-            canvas.width = planet.dimensions.x * scale;
-            canvas.height = planet.dimensions.y * scale;
-
-            for (let y = 0; y < planet.dimensions.y; y++) {
-                for (let x = 0; x < planet.dimensions.x; x++) {
-                    cx.fillStyle = cell_colors[get_cell(planet, x, y)];
-                    cx.fillRect(x * scale, y * scale, scale, scale);
-                }
-            }
-
-            for (let e of planet.entities) {
-                // cx.fillStyle = entity_colors[e.kind];
-                // cx.fillRect(e.position.x * scale + 2, e.position.y * scale + 2, scale - 4, scale - 4);
-                cx.drawImage(entity_images[e.kind], e.position.x * scale, e.position.y * scale);
-            }
-
-            prevUpdate = Date.now();
-            requestAnimationFrame(draw);
-        }
-        requestAnimationFrame(draw);
+        app.startRenderLoop();
     </script>
 </body>
 </html>

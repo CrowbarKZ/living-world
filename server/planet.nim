@@ -1,5 +1,5 @@
 import times, typetraits, random, math, json
-import msgpack4nim, perlin
+import perlin
 import vector, entity, cell
 
 randomize()
@@ -211,10 +211,6 @@ proc process*(p: var Planet) {.discardable.} =
     for i in 0..<numsteps:
         step(p)
     p.lastProcessed = newNow
-
-
-proc toMsgPack*(p: Planet): string =
-    result = pack(p)
 
 
 when isMainModule:

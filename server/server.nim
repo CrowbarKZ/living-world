@@ -42,7 +42,11 @@ proc processRequest(req: Request) {.async, gcsafe.} =
                         p.unpause
                     of "get_cell_info":
                         let pos: Vector2 = (command["x"].getInt, command["y"].getInt)
-                        await ws.sendText($p.getCellJson(pos))
+                        let response = %*{
+                            "type": "cell_info",
+                            "data": p.getCellJson(pos),
+                        }
+                        await ws.sendText($response)
                     of "change_cell":
                         let pos: Vector2 = (command["x"].getInt, command["y"].getInt)
                         p.setCellKind(pos, command["cellKind"].getInt.CellKind)
@@ -64,7 +68,7 @@ proc processRequest(req: Request) {.async, gcsafe.} =
 
 proc main() =
     clients = newSeq[AsyncWebSocket]()
-    p = emptyPlanet(60, 60)
+    p = emptyPlanet(50, 50)
     waitFor server.serve(Port(8000), processRequest)
 
 
