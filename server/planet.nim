@@ -11,7 +11,7 @@ let noise = newNoise(seed.uint32, 1, 0.5)
 let oneDay: Duration = initDuration(days=1)
 const spawnIntervals: array[EntityKind, int] = [5, 20, 50]
 const directionChangeInterval: int = 10
-const msPerRound = 100
+const msPerRound = 500
 
 type
     Planet* = tuple
