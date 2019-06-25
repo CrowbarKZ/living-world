@@ -49,7 +49,11 @@ proc processRequest(req: Request) {.async, gcsafe.} =
                         await ws.sendText($response)
                     of "change_cell":
                         let pos: Vector2 = (command["x"].getInt, command["y"].getInt)
-                        p.setCellKind(pos, command["cellKind"].getInt.CellKind)
+                        p.setCellKind(command["kind"].getInt.CellKind, pos)
+                    of "create_entity":
+                        let pos: Vector2 = (command["x"].getInt, command["y"].getInt)
+                        let kind: EntityKind = command["kind"].getInt.EntityKind;
+                        p.createEntity(kind, pos)
                     else:
                         let cmdName = command["name"].getStr
                         echo fmt"received command: {cmdName}"
@@ -64,6 +68,7 @@ proc processRequest(req: Request) {.async, gcsafe.} =
                 else: discard
             except:
                 echo "encountered exception: ", getCurrentExceptionMsg()
+                break;
 
 
 proc main() =

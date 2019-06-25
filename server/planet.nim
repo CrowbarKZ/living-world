@@ -60,12 +60,6 @@ proc unpause*(p: var Planet) {.discardable.} =
     p.lastProcessed = now().utc
 
 
-proc createEntity(p: var Planet, kind: EntityKind, pos: Vector2, dir: Vector2) {.discardable.} =
-    let e: Entity = newEntity(kind, pos, dir)
-    p.entities.add(e)
-    p.cells[pos.x + pos.y * p.dimensions.x].entityRef = e
-
-
 func getCell(p: Planet, pos: Vector2): Cell =
     if pos.x >= p.dimensions.x or pos.y >= p.dimensions.y or pos.x < 0 or pos.y < 0:
         return emptyCell()
@@ -74,6 +68,21 @@ func getCell(p: Planet, pos: Vector2): Cell =
 
 func mgetCell(p: var Planet, pos: Vector2): var Cell =
     return p.cells[pos.x + pos.y * p.dimensions.x]
+
+
+proc createEntity*(p: var Planet, kind: EntityKind, pos: Vector2) {.discardable.} =
+    var cell: Cell = p.mgetCell(pos)
+
+    if not (cell.isPassable and cell.isFree):
+        echo "cell is not free or passable"
+        return
+
+    if kind == grass and not cell.isGrowable:
+        return
+
+    let e: Entity = newEntity(kind, pos, generator.sample(directions))
+    p.entities.add(e)
+    cell.entityRef = e
 
 
 proc deleteEntity(p: var Planet, pos: Vector2, idx: int) {.discardable} =
@@ -89,7 +98,7 @@ proc moveEntity(p: var Planet, e: Entity, newPos: Vector2) {.discardable} =
     p.mgetCell(newPos).entityRef = e
 
 
-proc setCellKind*(p: var Planet, pos: Vector2, kind: CellKind) {.discardable.} =
+proc setCellKind*(p: var Planet, kind: CellKind, pos: Vector2) {.discardable.} =
     ## also deletes entities at pos
     if pos.x >= p.dimensions.x or pos.y >= p.dimensions.y or pos.x < 0 or pos.y < 0:
         return
@@ -148,7 +157,7 @@ proc stepEntity(p: var Planet, e: var Entity): int =
                         echo "gave birth!"
                         e.energy = int(e.energy.float * 0.3)
                         targetCell.entityRef.energy = int(targetCell.entityRef.energy.float * 0.3)
-                        p.createEntity(sheep, birthPos, generator.sample(directions))
+                        p.createEntity(sheep, birthPos)
                     e.direction = generator.sample(directions)
                 else:
                     discard
@@ -181,7 +190,7 @@ proc step(p: var Planet) {.discardable.} =
     var cell = p.getCell(pos)
     if cell.isGrowable and cell.isFree:
         if p.age mod spawnIntervals[grass] == 0:
-            p.createEntity(grass, pos, directions[north])
+            p.createEntity(grass, pos)
 
 
     # create sheep if needed and the cell is free
@@ -189,7 +198,7 @@ proc step(p: var Planet) {.discardable.} =
     cell = p.getCell(pos)
     if cell.isPassable and cell.isFree:
         if p.age mod spawnIntervals[sheep] == 0:
-            p.createEntity(sheep, pos, generator.sample(directions))
+            p.createEntity(sheep, pos)
 
 
 proc process*(p: var Planet) {.discardable.} =

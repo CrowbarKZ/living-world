@@ -74,7 +74,8 @@ class Game {
         this.canvasEntity.onmousedown = e => {
             let pos = pointerPosition(e, this.canvasEntity);
             let cmd = {"name": toolSelect.value, "x": pos.x, "y": pos.y}
-            if (toolSelect.value == "change_cell") cmd["cellKind"] = 2
+            if (toolSelect.value == "change_cell") cmd["kind"] = 2
+            if (toolSelect.value == "create_entity") cmd["kind"] = 1
             ws.send(JSON.stringify(cmd));
         }
     }
@@ -85,7 +86,6 @@ class Game {
         function draw(start) {
             let dt = Date.now() - prevUpdate;
             app.msSinceUpdate += dt;
-            console.log(app.msSinceUpdate);
 
             let planet = app.planet;
             let newPlanet = app.newPlanet;
@@ -116,8 +116,15 @@ class Game {
             canvasEntity.height = planet.dimensions.y * scale;
 
             for (let e of newPlanet.entities) {
-                // let x = lerp(newEntity.x, oldEntity.x, Math.max(app.msSinceUpdate, pollInterval));
-                cxe.drawImage(entity_images[e.kind], e.position.x * scale, e.position.y * scale);
+                let pos = e.position;
+                if (e.kind != "grass") {
+                    let oldSelf = planet.entities.find(elem => elem.oid == e.oid);
+                    if (oldSelf) {
+                        let coef = Math.min(app.msSinceUpdate, pollInterval) / pollInterval;
+                        pos = lerp_position(oldSelf.position, e.position, coef);
+                    }
+                }
+                cxe.drawImage(entity_images[e.kind], Math.round(pos.x * scale), Math.round(pos.y * scale));
             }
 
             prevUpdate = Date.now();

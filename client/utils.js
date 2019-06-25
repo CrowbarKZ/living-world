@@ -33,3 +33,11 @@ function samePlanets(p1, p2) {
     }
     return true;
 }
+
+
+function lerp_position(pos1, pos2, coef) {
+    return {
+        x: pos1.x + coef * (pos2.x - pos1.x),
+        y: pos1.y + coef * (pos2.y - pos1.y)
+    }
+}
