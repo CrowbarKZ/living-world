@@ -1,3 +1,7 @@
+## Planet
+## This is the primary data structure we operate on, contains everything game - related
+## Needs to be stored to save game state
+
 import times, typetraits, random, math, json
 import perlin
 import vector, entity, cell

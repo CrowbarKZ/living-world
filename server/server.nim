@@ -1,3 +1,5 @@
+## WebSocket server
+
 import random, asynchttpserver, asyncdispatch, asyncnet, strformat, strutils, json
 import websocket
 import entity, planet, vector, cell

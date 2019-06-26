@@ -1,3 +1,5 @@
+## 2D Vector routines
+
 import json
 
 type
@@ -24,6 +26,7 @@ proc `%`*(v: Vector2): JsonNode =
 
 
 proc nextDir*(dir: Vector2): Vector2 =
+    ## returns next direction clockwise
     let idx = directions.find(dir)
     let newIdx = (idx + 1) mod directions.len
     return directions[newIdx.DirectionName]

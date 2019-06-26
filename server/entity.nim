@@ -1,3 +1,7 @@
+## Entity
+## A dynamic (changing overtime) object on a planet
+## e.g. grass, sheep, human
+
 import json, oids
 import vector
 

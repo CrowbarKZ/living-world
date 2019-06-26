@@ -1,6 +1,9 @@
+## Cell
+## makes space on a planet
+## can be inhabited only by 1 entity at any time
+
 import json
 import entity
-
 
 type
     CellKind* = enum
@@ -8,7 +11,7 @@ type
 
     Cell* = tuple
         kind: CellKind
-        entityRef: Entity
+        entityRef: Entity  ## acts as index for searching entities by their position on a planet
 
 
 proc `%`*(c: Cell): JsonNode =
