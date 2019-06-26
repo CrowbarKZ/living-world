@@ -71,10 +71,9 @@ func mgetCell(p: var Planet, pos: Vector2): var Cell =
 
 
 proc createEntity*(p: var Planet, kind: EntityKind, pos: Vector2) {.discardable.} =
-    var cell: Cell = p.mgetCell(pos)
+    var cell: Cell = p.getCell(pos)
 
     if not (cell.isPassable and cell.isFree):
-        echo "cell is not free or passable"
         return
 
     if kind == grass and not cell.isGrowable:
@@ -82,7 +81,7 @@ proc createEntity*(p: var Planet, kind: EntityKind, pos: Vector2) {.discardable.
 
     let e: Entity = newEntity(kind, pos, generator.sample(directions))
     p.entities.add(e)
-    cell.entityRef = e
+    p.mgetCell(pos).entityRef = e
 
 
 proc deleteEntity(p: var Planet, pos: Vector2, idx: int) {.discardable} =
@@ -113,6 +112,9 @@ func getCellJson*(p: Planet, pos: Vector2): JsonNode =
     result = %*{
         "pos": pos,
         "cell_kind": cell.kind,
+        "isFree": cell.isFree,
+        "isPassable": cell.isPassable,
+        "isGrowable": cell.isGrowable,
     }
 
     if cell.entityRef != nil:
@@ -128,7 +130,6 @@ proc stepEntity(p: var Planet, e: var Entity): int =
     # change energy
     e.addEnergy(energyIncrement[e.kind])
     if e.energy <= 0:
-        echo "died from starvation :(!"
         return p.entities.find(e)
 
     # move and process interactions
