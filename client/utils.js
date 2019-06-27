@@ -1,20 +1,10 @@
-function elt(type, props, ...children) {
-    let dom = document.createElement(type);
-    if (props) Object.assign(dom, props);
-        for (let child of children) {
-            if (typeof child != "string") dom.appendChild(child);
-            else dom.appendChild(document.createTextNode(child));
-        }
-    return dom;
-}
-
-
-function get_cell(planet, x, y) {
+function getCell(planet, x, y) {
     return planet.cells[x + y * planet.dimensions.x];
 }
 
 
 function pointerPosition(pos, domNode) {
+    // pixel pos to grid pos
     let rect = domNode.getBoundingClientRect();
     return {
         x: Math.floor((pos.clientX - rect.left) / scale),
@@ -24,6 +14,8 @@ function pointerPosition(pos, domNode) {
 
 
 function samePlanets(p1, p2) {
+    // check if 2 planets have same cells to decide if we need to
+    // redraw them
     if (p1 == null || p2 == null) return false;
 
     let arr1 = p1.cells;
@@ -35,7 +27,9 @@ function samePlanets(p1, p2) {
 }
 
 
-function lerp_position(pos1, pos2, coef) {
+function lerpPosition(pos1, pos2, coef) {
+    // linear interpolation of position vectors
+    // coef should be between 0 and 1
     return {
         x: pos1.x + coef * (pos2.x - pos1.x),
         y: pos1.y + coef * (pos2.y - pos1.y)

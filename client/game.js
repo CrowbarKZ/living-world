@@ -16,6 +16,12 @@ const entity_images = {
 
 
 class Game {
+    // encapsulates main clinet side logic
+    // client polls server for the world data every pollInterval seconds
+    // but in order to make the game feel smoother
+    // render loop tries to be real time with requestAnimationFrame();
+    // and we interpolate the positions of moving objects;
+
     constructor() {
         var ws = new WebSocket("ws://localhost/backend/ws", "living-world-default")
         ws.binaryType = 'arraybuffer';
@@ -26,8 +32,6 @@ class Game {
         this.newPlanet = null;  // new state we want to transition to
         this.msSinceUpdate = 0;
         let paused = false;
-
-
 
         // ui refs
         let responseContainer = document.querySelector("textarea#response-container");
@@ -103,7 +107,7 @@ class Game {
 
                 for (let y = 0; y < newPlanet.dimensions.y; y++) {
                     for (let x = 0; x < newPlanet.dimensions.x; x++) {
-                        cxb.fillStyle = cell_colors[get_cell(newPlanet, x, y)];
+                        cxb.fillStyle = cell_colors[getCell(newPlanet, x, y)];
                         cxb.fillRect(x * scale, y * scale, scale, scale);
                     }
                 }
@@ -121,7 +125,7 @@ class Game {
                     let oldSelf = planet.entities.find(elem => elem.oid == e.oid);
                     if (oldSelf) {
                         let coef = Math.min(app.msSinceUpdate, pollInterval) / pollInterval;
-                        pos = lerp_position(oldSelf.position, e.position, coef);
+                        pos = lerpPosition(oldSelf.position, e.position, coef);
                     }
                 }
                 cxe.drawImage(entity_images[e.kind], Math.round(pos.x * scale), Math.round(pos.y * scale));
