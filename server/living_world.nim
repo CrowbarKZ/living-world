@@ -12,12 +12,12 @@ var server: AsyncHttpServer = newAsyncHttpServer()
 
 proc processRequest(req: Request) {.async, gcsafe.} =
     if req.url.path == "/backend/signup":
-        let payload: SignUpPayload = parseJson(req.body).to(SignUpPayload)
-        let success: bool = signUp(dbConnection, payload)
-        if success:
-            await req.respond(Http400, "Something went RIGHT :)")
-        else:
-            await req.respond(Http400, "Something went wrong")
+        let responseBody: JsonNode = signUp(dbConnection, req.body)
+        await req.respond(Http200, $responseBody, newHttpHeaders([("Content-Type","application/json")]))
+
+    if req.url.path == "/backend/signin":
+        let responseBody: JsonNode = signIn(dbConnection, req.body)
+        await req.respond(Http200, $responseBody, newHttpHeaders([("Content-Type","application/json")]))
 
     if req.url.path == "/backend/ws":
         # handle connection
