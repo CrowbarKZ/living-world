@@ -1,0 +1,3 @@
+- Implement Session object to store session data.
+- Implement list of sessions, which should also prune dead sessions on new logins
+- Investigate why sheep sometimes stop and do nothing for a while

@@ -1,11 +1,13 @@
 ## WebSocket server
 
-import random, asynchttpserver, asyncdispatch, asyncnet, strformat, strutils, json, db_sqlite
+import random, asynchttpserver, asyncdispatch, asyncnet, strformat, strutils, json, db_sqlite, tables
 import websocket
-import living_worldpkg/entity, living_worldpkg/planet, living_worldpkg/vector, living_worldpkg/cell, living_worldpkg/auth
+import living_worldpkg/entity, living_worldpkg/planet, living_worldpkg/vector, living_worldpkg/cell, living_worldpkg/auth,
+       living_worldpkg/command
 
 var dbConnection {.threadvar.}: DbConn
 var clients {.threadvar.}: seq[AsyncWebSocket]
+var planets {.threadvar.}: TableRef[string, Planet]
 var p {.threadvar.}: Planet
 var server: AsyncHttpServer = newAsyncHttpServer()
 
@@ -16,7 +18,7 @@ proc processRequest(req: Request) {.async, gcsafe.} =
         await req.respond(Http200, $responseBody, newHttpHeaders([("Content-Type","application/json")]))
 
     if req.url.path == "/backend/signin":
-        let responseBody: JsonNode = signIn(dbConnection, req.body)
+        let responseBody: JsonNode = signIn(dbConnection, req.body, planets)
         await req.respond(Http200, $responseBody, newHttpHeaders([("Content-Type","application/json")]))
 
     if req.url.path == "/backend/ws":
@@ -36,39 +38,7 @@ proc processRequest(req: Request) {.async, gcsafe.} =
                 let (opcode, data) = await ws.readData()
                 case opcode
                 of Opcode.Text:
-                    let command = parseJson(data)
-
-                    case command["name"].getStr:
-                    of "get_planet_data":
-                        p.process
-                        let response = %*{
-                            "type": "full_update",
-                            "data": p,
-                        }
-                        await ws.sendText($response)
-                        # await ws.sendBinary(p.toMsgPack)
-                    of "pause":
-                        p.pause
-                    of "unpause":
-                        p.unpause
-                    of "get_cell_info":
-                        let pos: Vector2 = (command["x"].getInt, command["y"].getInt)
-                        let response = %*{
-                            "type": "cell_info",
-                            "data": p.getCellJson(pos),
-                        }
-                        await ws.sendText($response)
-                    of "change_cell":
-                        let pos: Vector2 = (command["x"].getInt, command["y"].getInt)
-                        p.setCellKind(command["kind"].getInt.CellKind, pos)
-                    of "create_entity":
-                        let pos: Vector2 = (command["x"].getInt, command["y"].getInt)
-                        let kind: EntityKind = command["kind"].getInt.EntityKind;
-                        p.createEntity(kind, pos)
-                    else:
-                        let cmdName = command["name"].getStr
-                        echo fmt"received command: {cmdName}"
-
+                    await ws.sendText($processCommand(data, planets))
                 of Opcode.Binary:
                     await ws.sendBinary(data)
                 of Opcode.Close:
@@ -86,6 +56,7 @@ proc main() =
     dbConnection = open("data.db", "", "", "")
     clients = newSeq[AsyncWebSocket]()
     p = emptyPlanet(50, 50)
+    planets = newTable[string, Planet]()
     waitFor server.serve(Port(8000), processRequest)
 
 

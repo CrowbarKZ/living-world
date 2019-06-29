@@ -10,7 +10,6 @@ randomize()
 let now = getTime()
 let seed = now.toUnix + now.nanosecond
 var generator = initRand(seed)
-let noise = newNoise(seed.uint32, 1, 0.5)
 
 let oneDay: Duration = initDuration(days=1)
 const spawnIntervals: array[EntityKind, int] = [5, 20, 50]
@@ -18,13 +17,15 @@ const directionChangeInterval: int = 10
 const msPerRound = 500
 
 type
-    Planet* = tuple
+    PlanetObj = object
         dimensions: Vector2
         age: int
         cells: seq[Cell]
         entities: seq[Entity]
         lastProcessed: DateTime
         paused: bool
+
+    Planet* = ref PlanetObj
 
 
 proc `%`*(p: Planet): JsonNode =
@@ -41,11 +42,14 @@ proc emptyPlanet*(w: int, h: int): Planet =
     let entities: seq[Entity] = newSeq[Entity]()
     var cells: seq[Cell] = newSeq[Cell](w * h)
 
+    let seed = generator.rand(uint32.high).uint32
+    let noise = newNoise(seed.uint32, 1, 0.5)
+
     for x in 0..<w:
         for y in 0..<h:
             cells[x + y * w] = (kind: noise.perlin(x, y).noiseToCellKind, entityRef: nil)
 
-    result = (
+    result = Planet(
         dimensions: dimensions,
         age: 0,
         cells: cells,

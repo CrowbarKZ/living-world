@@ -1,6 +1,8 @@
 ## Authentication related routines
 
-import bcrypt, db_sqlite, json
+import db_sqlite, json, tables
+import bcrypt
+import planet
 
 type
     SignUpPayload* = object
@@ -23,7 +25,7 @@ template parseBody(outvar: untyped, body: string, outtype: untyped) =
 
 
 func response(success: bool, data: string): JsonNode =
-    return %*{"success": success, "message": data}
+    return %*{"success": success, "data": data}
 
 
 proc signUp*(conn: DbConn, body: string): JsonNode =
@@ -41,9 +43,9 @@ proc signUp*(conn: DbConn, body: string): JsonNode =
     return response(true, "user_created")
 
 
-proc signIn*(conn: DbConn, body: string): JsonNode =
-    ## signs user in and returns a session token
-    ## returns json response for client
+proc signIn*(conn: DbConn, body: string, planets: TableRef[string, Planet]): JsonNode =
+    ## signs user in, loads his planet in memory (or creates if needed)
+    ## returns json response with session token for client
     var payload: SignInPayload
     parseBody(payload, body, SignInPayload)
 
@@ -54,4 +56,6 @@ proc signIn*(conn: DbConn, body: string): JsonNode =
     if pwdsalt == "" or hash(payload.password, pwdsalt) != pwdhash:
         return response(false, "login_failed")
     else:
-        return response(true, genSalt(1))
+        let token = genSalt(1)
+        planets[token] = emptyPlanet(50, 50)
+        return response(true, token)

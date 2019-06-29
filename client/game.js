@@ -55,7 +55,7 @@ class Game {
 
         // bind ws events
         ws.onopen = event => {
-            let cmd = {name: "get_planet_data"};
+            let cmd = {name: "get_planet_data", token: "$2a$04$rl4Pr6HtwS/WLEzWYMdJIu", data: null};
             ws.send(JSON.stringify(cmd));
             setInterval(() => {
                 if (!paused) ws.send(JSON.stringify(cmd));
@@ -63,7 +63,7 @@ class Game {
         };
         ws.onmessage = event => {
             let response = JSON.parse(event.data);
-            if (response.type == "full_update") {
+            if (response.kind == "full_update") {
                 this.msSinceUpdate = 0;
                 this.planet = this.newPlanet;
                 this.newPlanet = response.data;
