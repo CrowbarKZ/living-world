@@ -1,6 +1,9 @@
 nimcache/
 build/
 
+# sqlite database
+server/data.db
+
 # Sublime text files
 *.sublime-project
 *.sublime-workspace

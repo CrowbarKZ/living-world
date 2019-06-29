@@ -1,15 +1,24 @@
 ## WebSocket server
 
-import random, asynchttpserver, asyncdispatch, asyncnet, strformat, strutils, json
+import random, asynchttpserver, asyncdispatch, asyncnet, strformat, strutils, json, db_sqlite
 import websocket
-import entity, planet, vector, cell
+import living_worldpkg/entity, living_worldpkg/planet, living_worldpkg/vector, living_worldpkg/cell, living_worldpkg/auth
 
+var dbConnection {.threadvar.}: DbConn
 var clients {.threadvar.}: seq[AsyncWebSocket]
 var p {.threadvar.}: Planet
 var server: AsyncHttpServer = newAsyncHttpServer()
 
 
 proc processRequest(req: Request) {.async, gcsafe.} =
+    if req.url.path == "/backend/signup":
+        let payload: SignUpPayload = parseJson(req.body).to(SignUpPayload)
+        let success: bool = signUp(dbConnection, payload)
+        if success:
+            await req.respond(Http400, "Something went RIGHT :)")
+        else:
+            await req.respond(Http400, "Something went wrong")
+
     if req.url.path == "/backend/ws":
         # handle connection
         let (ws, error) = await verifyWebsocketRequest(req, "living-world-default")
@@ -74,6 +83,7 @@ proc processRequest(req: Request) {.async, gcsafe.} =
 
 
 proc main() =
+    dbConnection = open("data.db", "", "", "")
     clients = newSeq[AsyncWebSocket]()
     p = emptyPlanet(50, 50)
     waitFor server.serve(Port(8000), processRequest)
