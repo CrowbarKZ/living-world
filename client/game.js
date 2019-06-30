@@ -22,7 +22,7 @@ class Game {
     // render loop tries to be real time with requestAnimationFrame();
     // and we interpolate the positions of moving objects;
 
-    constructor() {
+    constructor(token) {
         var ws = new WebSocket("ws://localhost/backend/ws", "living-world-default")
         ws.binaryType = 'arraybuffer';
 
@@ -41,21 +41,26 @@ class Game {
         this.canvasBg = document.querySelector("canvas#background-layer");
         this.canvasEntity = document.querySelector("canvas#entity-layer");
 
-        // bind buttons events
+        // bind buttons and window events
         btnPause.onclick = () => {
             paused = true;
             let cmd = {name: "pause"};
             ws.send(JSON.stringify(cmd));
-        }
+        };
         btnUnpause.onclick = () => {
             paused = false;
             let cmd = {name: "unpause"};
             ws.send(JSON.stringify(cmd));
-        }
+        };
+        window.onbeforeunload = (e) => {
+            let cmd = {name: "signout", token: token, data: null};
+            ws.send(JSON.stringify(cmd));
+        };
 
         // bind ws events
         ws.onopen = event => {
-            let cmd = {name: "get_planet_data", token: "$2a$04$rl4Pr6HtwS/WLEzWYMdJIu", data: null};
+            console.log(token);
+            let cmd = {name: "get_planet_data", token: token, data: null};
             ws.send(JSON.stringify(cmd));
             setInterval(() => {
                 if (!paused) ws.send(JSON.stringify(cmd));
@@ -72,7 +77,7 @@ class Game {
                 let beauty = JSON.stringify(response.data, null, 4)
                 responseContainer.value = beauty;
             }
-        }
+        };
 
         // set mouse events
         this.canvasEntity.onmousedown = e => {
@@ -81,7 +86,7 @@ class Game {
             if (toolSelect.value == "change_cell") cmd["kind"] = 2
             if (toolSelect.value == "create_entity") cmd["kind"] = 1
             ws.send(JSON.stringify(cmd));
-        }
+        };
     }
 
     startRenderLoop() {

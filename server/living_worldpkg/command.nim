@@ -1,5 +1,5 @@
-import json, tables
-import planet
+import json, tables, db_sqlite
+import auth, planet
 
 
 type
@@ -13,13 +13,13 @@ func response(kind: string, success: bool, data: JsonNode): JsonNode =
     return %*{"kind": kind, "success": success, "data": data}
 
 
-proc getPlanetData(command: Command, planets: TableRef[string, Planet]): JsonNode =
-    var p: Planet = planets[command.token]
+proc getPlanetData(command: Command, sessions: TableRef[string, Session]): JsonNode =
+    var p: Planet = sessions[command.token].planet
     p.process
     return response("full_update", true, %p)
 
 
-proc processCommand*(commandStr: string, planets: TableRef[string, Planet]): JsonNode =
+proc processCommand*(conn: DbConn, commandStr: string, sessions: TableRef[string, Session]): JsonNode =
     ## processes command and returns Response
     var command: Command
     try:
@@ -28,12 +28,16 @@ proc processCommand*(commandStr: string, planets: TableRef[string, Planet]): Jso
         echo "failed to parse command: ", commandStr, " ", getCurrentExceptionMsg()
         return response("info", false, %"bad_payload")
 
-    if not (command.token in planets):
+    if not (command.token in sessions):
         return response("info", false, %"such client is not logged in")
 
     case command.name:
         of "get_planet_data":
-            return getPlanetData(command, planets)
+            return getPlanetData(command, sessions)
+        of "signout":
+            endSession(conn, command.token, sessions)
+            echo "signed user out, num sessions: ", len(sessions)
+            return response("info", true, %"logged out")
         # of "pause":
         #     p.pause
         # of "unpause":
@@ -53,4 +57,5 @@ proc processCommand*(commandStr: string, planets: TableRef[string, Planet]): Jso
         #     let kind: EntityKind = command["kind"].getInt.EntityKind;
         #     p.createEntity(kind, pos)
         else:
+            echo "unknown command: ", commandStr
             return response("info", false, %"unknown_command")

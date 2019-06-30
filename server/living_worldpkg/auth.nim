@@ -1,18 +1,35 @@
 ## Authentication related routines
 
-import db_sqlite, json, tables
+import db_sqlite, json, tables, times
 import bcrypt
 import planet
 
+const sessionKeepAlive: Duration = initDuration(minutes=15)
+
 type
-    SignUpPayload* = object
+    SessionObj = object
+        username*: string
+        planet*: Planet
+        lastRequest*: DateTime
+
+    Session* = ref SessionObj
+
+    SignUpPayload = object
         username*: string
         password*: string
         email*: string
 
-    SignInPayload* = object
+    SignInPayload = object
         username*: string
         password*: string
+
+
+proc newSession(username: string, planet: Planet): Session =
+    return Session(
+        username: username,
+        planet: planet,
+        lastRequest: now().utc
+    )
 
 
 template parseBody(outvar: untyped, body: string, outtype: untyped) =
@@ -43,19 +60,81 @@ proc signUp*(conn: DbConn, body: string): JsonNode =
     return response(true, "user_created")
 
 
-proc signIn*(conn: DbConn, body: string, planets: TableRef[string, Planet]): JsonNode =
+func getExistingToken(username: string, sessions: TableRef[string, Session]): string =
+    ## returns token for username if session exists in memory
+    ## otheriwse returns empty string
+    for k, v in sessions.pairs:
+        if v.username == username:
+            return k
+    return ""
+
+
+proc endSession*(conn: DbConn, token: string, sessions: TableRef[string, Session]) {.discardable.} =
+    ## save progress and delete session
+    if not (token in sessions):
+        return
+
+    let session = sessions[token]
+    let userid = conn.getValue(sql"SELECT id FROM users WHERE username = ?", session.username)
+    let planetid = conn.getValue(sql"SELECT id FROM planets WHERE userid = ?", userid)
+    if planetid == "":
+        echo "making new planet in db for ", userid
+        conn.exec(sql"INSERT INTO planets (userid, data) VALUES (?, ?)",
+                  userid, $(%session.planet))
+    else:
+        echo "updating planet in db for ", userid
+        conn.exec(sql"UPDATE planets SET data = ? WHERE id = ?",
+                  $(%session.planet), planetid)
+    sessions.del(token)
+
+
+proc cleanDeadSessions(conn: DbConn, sessions: TableRef[string, Session]) {.discardable.} =
+    let newNow: DateTime = now().utc
+    var dt: Duration
+
+    var keysToDelete: seq[string] = newSeq[string]()
+    for k, v in sessions.pairs:
+        dt = newNow - v.lastRequest
+        if dt > sessionKeepAlive:
+            keysToDelete.add(k)
+
+    for k in keysToDelete:
+        endSession(conn, k, sessions)
+        echo "ended a dead session"
+
+
+proc signIn*(conn: DbConn, body: string, sessions: TableRef[string, Session]): JsonNode =
     ## signs user in, loads his planet in memory (or creates if needed)
     ## returns json response with session token for client
     var payload: SignInPayload
     parseBody(payload, body, SignInPayload)
 
-    let row = conn.getRow(sql"SELECT pwdsalt, pwdhash FROM users WHERE username = ?", payload.username)
+    let row = conn.getRow(sql"SELECT pwdsalt, pwdhash, username, id FROM users WHERE username = ?", payload.username)
     let pwdsalt = row[0]
     let pwdhash = row[1]
+    let username = row[2]
+    let userid = row[3]
 
     if pwdsalt == "" or hash(payload.password, pwdsalt) != pwdhash:
         return response(false, "login_failed")
+
+    cleanDeadSessions(conn, sessions)
+
+    var token: string = getExistingToken(username, sessions)
+    if token == "":
+        token = genSalt(1)
+
+    let planetText = conn.getValue(sql"SELECT data FROM planets WHERE userid = ?", userid)
+    var planet: Planet
+    if planetText == "":
+        echo "creating new planet..."
+        planet = emptyPlanet(50, 50)
     else:
-        let token = genSalt(1)
-        planets[token] = emptyPlanet(50, 50)
-        return response(true, token)
+        echo "loading planet from db..."
+        planet = newPlanetFromText(planetText)
+
+    sessions[token] = newSession(username, planet)
+
+    echo "currently we have this many sessions:", len(sessions)
+    return response(true, token)
+

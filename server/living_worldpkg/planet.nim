@@ -2,7 +2,7 @@
 ## This is the primary data structure we operate on, contains everything game - related
 ## Needs to be stored to save game state
 
-import times, typetraits, random, math, json
+import times, typetraits, random, math, json, strutils
 import perlin
 import vector, entity, cell
 
@@ -11,7 +11,7 @@ let now = getTime()
 let seed = now.toUnix + now.nanosecond
 var generator = initRand(seed)
 
-let oneDay: Duration = initDuration(days=1)
+const oneDay: Duration = initDuration(days=1)
 const spawnIntervals: array[EntityKind, int] = [5, 20, 50]
 const directionChangeInterval: int = 10
 const msPerRound = 500
@@ -34,6 +34,8 @@ proc `%`*(p: Planet): JsonNode =
         "age": p.age,
         "cells": p.cells,
         "entities": p.entities,
+        # "lastProcessed": p.lastProcessed,
+        "paused": p.paused
     }
 
 
@@ -47,7 +49,7 @@ proc emptyPlanet*(w: int, h: int): Planet =
 
     for x in 0..<w:
         for y in 0..<h:
-            cells[x + y * w] = (kind: noise.perlin(x, y).noiseToCellKind, entityRef: nil)
+            cells[x + y * w] = newCell(noise.perlin(x, y).noiseToCellKind, nil)
 
     result = Planet(
         dimensions: dimensions,
@@ -79,6 +81,7 @@ func mgetCell(p: var Planet, pos: Vector2): var Cell =
 
 
 proc createEntity*(p: var Planet, kind: EntityKind, pos: Vector2) {.discardable.} =
+    ## properly creates entity and cell reference for it
     var cell: Cell = p.getCell(pos)
 
     if not (cell.isPassable and cell.isFree):
@@ -229,6 +232,27 @@ proc process*(p: var Planet) {.discardable.} =
     for i in 0..<numsteps:
         step(p)
     p.lastProcessed = newNow
+
+
+proc newPlanetFromText*(s: string): Planet =
+    ## create a planet from its text-json representation
+    ## TODO: possibly account for different dimensions
+    ## TODO: fix creating entities, for now enery, oid, direction are lost
+    ## TODO: for now it ignores lastProcessed
+    result = emptyPlanet(50, 50)
+    var node: JsonNode
+    try:
+        node = parseJson(s)
+        for idx, c in node["cells"].getElems:
+            result.cells[idx].kind = parseEnum[CellKind](c.getStr)
+        for n in node["entities"].getElems:
+            let kind = parseEnum[EntityKind](n["kind"].getStr)
+            let pos = (x: n["position"]["x"].getInt, y: n["position"]["y"].getInt)
+            result.createEntity(kind, pos)
+
+    except JsonParsingError, KeyError, ValueError:
+        echo "failed to parse planet data from text: ", getCurrentExceptionMsg()
+        return result
 
 
 when isMainModule:

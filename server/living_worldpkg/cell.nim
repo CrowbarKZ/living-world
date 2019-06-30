@@ -9,17 +9,23 @@ type
     CellKind* = enum
         desert, land, water
 
-    Cell* = tuple
-        kind: CellKind
-        entityRef: Entity  ## acts as index for searching entities by their position on a planet
+    CellObj = object
+        kind*: CellKind
+        entityRef*: Entity  ## acts as index for searching entities by their position on a planet
+
+    Cell* = ref CellObj
 
 
 proc `%`*(c: Cell): JsonNode =
     return %c.kind
 
 
+func newCell*(kind: CellKind, entityRef: Entity): Cell =
+    return Cell(kind: kind, entityRef: entityRef)
+
+
 func emptyCell*(): Cell =
-    return (kind: water, entityRef: nil)
+    return Cell(kind: water, entityRef: nil)
 
 
 func noiseToCellKind*(f: float): CellKind =

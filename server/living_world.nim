@@ -7,7 +7,7 @@ import living_worldpkg/entity, living_worldpkg/planet, living_worldpkg/vector, l
 
 var dbConnection {.threadvar.}: DbConn
 var clients {.threadvar.}: seq[AsyncWebSocket]
-var planets {.threadvar.}: TableRef[string, Planet]
+var sessions {.threadvar.}: TableRef[string, Session]
 var p {.threadvar.}: Planet
 var server: AsyncHttpServer = newAsyncHttpServer()
 
@@ -18,7 +18,7 @@ proc processRequest(req: Request) {.async, gcsafe.} =
         await req.respond(Http200, $responseBody, newHttpHeaders([("Content-Type","application/json")]))
 
     if req.url.path == "/backend/signin":
-        let responseBody: JsonNode = signIn(dbConnection, req.body, planets)
+        let responseBody: JsonNode = signIn(dbConnection, req.body, sessions)
         await req.respond(Http200, $responseBody, newHttpHeaders([("Content-Type","application/json")]))
 
     if req.url.path == "/backend/ws":
@@ -38,7 +38,7 @@ proc processRequest(req: Request) {.async, gcsafe.} =
                 let (opcode, data) = await ws.readData()
                 case opcode
                 of Opcode.Text:
-                    await ws.sendText($processCommand(data, planets))
+                    await ws.sendText($processCommand(dbConnection, data, sessions))
                 of Opcode.Binary:
                     await ws.sendBinary(data)
                 of Opcode.Close:
@@ -56,7 +56,7 @@ proc main() =
     dbConnection = open("data.db", "", "", "")
     clients = newSeq[AsyncWebSocket]()
     p = emptyPlanet(50, 50)
-    planets = newTable[string, Planet]()
+    sessions = newTable[string, Session]()
     waitFor server.serve(Port(8000), processRequest)
 
 

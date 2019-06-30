@@ -44,8 +44,18 @@
     </div>
 
     <script>
-        let app = new Game();
-        app.startRenderLoop();
+        let app;
+        postData('/backend/signin', {username: "lala", password: "123"})
+        // postData('/backend/signin', {username: "test_client1", password: "password1"})
+            .then(response => {
+                if(response.success == true) {
+                    app = new Game(response.data);
+                    app.startRenderLoop();
+                } else {
+                    console.error("login failed:", response.data);
+                }
+            })
+            .catch(error => console.error(error));
     </script>
 </body>
 </html>
