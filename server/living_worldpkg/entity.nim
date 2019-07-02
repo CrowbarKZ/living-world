@@ -2,7 +2,7 @@
 ## A dynamic (changing overtime) object on a planet
 ## e.g. grass, sheep, human
 
-import json, oids
+import json, oids, strutils
 import vector
 
 type
@@ -44,6 +44,19 @@ proc newEntity*(kind: EntityKind, pos: Vector2, dir: Vector2): Entity =
         energy: initialEnergy[kind],
         age: 0,
         oid: genOid(),
+    )
+
+
+proc newEntityFromJson*(n: JsonNode): Entity =
+    ## constructs new entity from JsonNode
+    ## can raise JsonParsingError, KeyError
+    return Entity(
+        kind: parseEnum[EntityKind](n["kind"].getStr),
+        position: (x: n["position"]["x"].getInt, y: n["position"]["y"].getInt),
+        direction: (x: n["direction"]["x"].getInt, y: n["direction"]["y"].getInt),
+        energy: n["energy"].getInt,
+        age: n["age"].getInt,
+        oid: parseOid(n["oid"].getStr),
     )
 
 

@@ -11,6 +11,7 @@ let now = getTime()
 let seed = now.toUnix + now.nanosecond
 var generator = initRand(seed)
 
+const timeFmt = "yyyy-MM-dd HH:mm:ss"
 const oneDay: Duration = initDuration(days=1)
 const spawnIntervals: array[EntityKind, int] = [5, 20, 50]
 const directionChangeInterval: int = 10
@@ -34,7 +35,7 @@ proc `%`*(p: Planet): JsonNode =
         "age": p.age,
         "cells": p.cells,
         "entities": p.entities,
-        # "lastProcessed": p.lastProcessed,
+        "lastProcessed": p.lastProcessed.format(timeFmt),
         "paused": p.paused
     }
 
@@ -83,7 +84,6 @@ func mgetCell(p: var Planet, pos: Vector2): var Cell =
 proc createEntity*(p: var Planet, kind: EntityKind, pos: Vector2) {.discardable.} =
     ## properly creates entity and cell reference for it
     var cell: Cell = p.getCell(pos)
-
     if not (cell.isPassable and cell.isFree):
         return
 
@@ -93,6 +93,13 @@ proc createEntity*(p: var Planet, kind: EntityKind, pos: Vector2) {.discardable.
     let e: Entity = newEntity(kind, pos, generator.sample(directions))
     p.entities.add(e)
     p.mgetCell(pos).entityRef = e
+
+
+proc addEntity*(p: var Planet, e: Entity) {.discardable.} =
+    ## adds entity reference to entities and cells
+    ## unlike createEntity this skips all checks (used for loading a save)
+    p.getCell(e.position).entityRef = e
+    p.entities.add(e)
 
 
 proc deleteEntity(p: var Planet, pos: Vector2, idx: int) {.discardable} =
@@ -164,13 +171,12 @@ proc stepEntity(p: var Planet, e: var Entity): int =
                 of sheep:
                     # give birth
                     let birthPos = e.position + e.direction.nextDir
-                    let birthCell = p.getCell(birthPos)
-                    if (birthCell.isPassable and e.canBirth and targetCell.entityRef.canBirth):
-                        echo "gave birth!"
-                        e.energy = int(e.energy.float * 0.3)
-                        targetCell.entityRef.energy = int(targetCell.entityRef.energy.float * 0.3)
-                        p.createEntity(sheep, birthPos)
-                    e.direction = generator.sample(directions)
+                    # let birthCell = p.getCell(birthPos)
+                    # if (birthCell.isPassable and e.canBirth and targetCell.entityRef.canBirth):
+                    #     e.energy = int(e.energy.float * 0.3)
+                    #     targetCell.entityRef.energy = int(targetCell.entityRef.energy.float * 0.3)
+                    #     p.createEntity(sheep, birthPos)
+                    # e.direction = generator.sample(directions)
                 else:
                     discard
             else:
@@ -204,7 +210,6 @@ proc step(p: var Planet) {.discardable.} =
         if p.age mod spawnIntervals[grass] == 0:
             p.createEntity(grass, pos)
 
-
     # create sheep if needed and the cell is free
     pos = (generator.rand(p.dimensions.x - 1), generator.rand(p.dimensions.y - 1))
     cell = p.getCell(pos)
@@ -218,6 +223,7 @@ proc process*(p: var Planet) {.discardable.} =
         return
 
     let newNow: DateTime = now().utc
+    echo "new now = ", newNow
     var dt: Duration = newNow - p.lastProcessed
     if dt > oneDay:
         dt = oneDay
@@ -230,25 +236,25 @@ proc process*(p: var Planet) {.discardable.} =
         echo "processing steps ", numsteps
 
     for i in 0..<numsteps:
+        if i mod 100 == 0:
+            echo "processing step = ", i
         step(p)
     p.lastProcessed = newNow
 
 
 proc newPlanetFromText*(s: string): Planet =
     ## create a planet from its text-json representation
-    ## TODO: possibly account for different dimensions
-    ## TODO: fix creating entities, for now enery, oid, direction are lost
-    ## TODO: for now it ignores lastProcessed
-    result = emptyPlanet(50, 50)
     var node: JsonNode
     try:
         node = parseJson(s)
+        result = emptyPlanet(node["dimensions"]["x"].getInt, node["dimensions"]["y"].getInt)
+        result.lastProcessed = parse(node["lastProcessed"].getStr, timeFmt, utc())
+        echo result.lastProcessed
         for idx, c in node["cells"].getElems:
             result.cells[idx].kind = parseEnum[CellKind](c.getStr)
         for n in node["entities"].getElems:
-            let kind = parseEnum[EntityKind](n["kind"].getStr)
-            let pos = (x: n["position"]["x"].getInt, y: n["position"]["y"].getInt)
-            result.createEntity(kind, pos)
+            let e: Entity = newEntityFromJson(n)
+            result.addEntity(e)
 
     except JsonParsingError, KeyError, ValueError:
         echo "failed to parse planet data from text: ", getCurrentExceptionMsg()
@@ -258,8 +264,10 @@ proc newPlanetFromText*(s: string): Planet =
 when isMainModule:
     let t0 = cpuTime()
 
-    var p: Planet = emptyPlanet(1000, 1000);
+    var p: Planet = emptyPlanet(50, 50);
     for i in 0..100000:
+        if i mod 100 == 0:
+            echo "processing step = ", i, " num entities = ", p.entities.len
         step(p)
 
     echo cpuTime() - t0
