@@ -1,5 +1,5 @@
 import json, tables, db_sqlite
-import auth, planet
+import types, auth, planet
 
 
 type
@@ -15,8 +15,8 @@ func response(kind: string, success: bool, data: JsonNode): JsonNode =
 
 proc getPlanetData(command: Command, sessions: TableRef[string, Session]): JsonNode =
     var p: Planet = sessions[command.token].planet
-    p.process
-    return response("full_update", true, %p)
+    p.process()
+    return response("full_update", true, p.getRenderJson())
 
 
 proc processCommand*(conn: DbConn, commandStr: string, sessions: TableRef[string, Session]): JsonNode =

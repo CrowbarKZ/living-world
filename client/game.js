@@ -1,12 +1,6 @@
 const scale = 12;
 const pollInterval = 500;  // ms
 
-const cell_colors = {
-    "desert": "#b75800",
-    "land": "#ead76e",
-    "water": "#20b6ea"
-};
-
 let sheepImg = new Image(); sheepImg.src = "/assets/Sheep_001.svg";
 let grassImg = new Image(); grassImg.src = "/assets/Grass_001.svg"
 const entity_images = {
@@ -112,7 +106,7 @@ class Game {
 
                 for (let y = 0; y < newPlanet.dimensions.y; y++) {
                     for (let x = 0; x < newPlanet.dimensions.x; x++) {
-                        cxb.fillStyle = cell_colors[getCell(newPlanet, x, y)];
+                        cxb.fillStyle = getCellColor(newPlanet, x, y);
                         cxb.fillRect(x * scale, y * scale, scale, scale);
                     }
                 }
@@ -124,16 +118,12 @@ class Game {
             canvasEntity.width = planet.dimensions.x * scale;
             canvasEntity.height = planet.dimensions.y * scale;
 
-            for (let e of newPlanet.entities) {
-                let pos = e.position;
-                if (e.kind != "grass") {
-                    let oldSelf = planet.entities.find(elem => elem.oid == e.oid);
-                    if (oldSelf) {
-                        let coef = Math.min(app.msSinceUpdate, pollInterval) / pollInterval;
-                        pos = lerpPosition(oldSelf.position, e.position, coef);
-                    }
+            for (let y = 0; y < newPlanet.dimensions.y; y++) {
+                for (let x = 0; x < newPlanet.dimensions.x; x++) {
+                    let organism = getOrganism(newPlanet, x, y);
+                    if (!organism) continue;
+                    cxe.drawImage(entity_images[organism], Math.round(x * scale), Math.round(y * scale));
                 }
-                cxe.drawImage(entity_images[e.kind], Math.round(pos.x * scale), Math.round(pos.y * scale));
             }
 
             prevUpdate = Date.now();

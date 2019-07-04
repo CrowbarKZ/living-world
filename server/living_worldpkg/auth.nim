@@ -2,7 +2,7 @@
 
 import db_sqlite, json, tables, times
 import bcrypt
-import planet
+import types, planet
 
 const sessionKeepAlive: Duration = initDuration(minutes=15)
 
@@ -80,11 +80,11 @@ proc endSession*(conn: DbConn, token: string, sessions: TableRef[string, Session
     if planetid == "":
         echo "making new planet in db for ", userid
         conn.exec(sql"INSERT INTO planets (userid, data) VALUES (?, ?)",
-                  userid, $(%session.planet))
+                  userid, $(session.planet.getRenderJson()))
     else:
         echo "updating planet in db for ", userid
         conn.exec(sql"UPDATE planets SET data = ? WHERE id = ?",
-                  $(%session.planet), planetid)
+                  $(session.planet.getRenderJson()), planetid)
     sessions.del(token)
 
 
@@ -128,10 +128,13 @@ proc signIn*(conn: DbConn, body: string, sessions: TableRef[string, Session]): J
     var planet: Planet
     if planetText == "":
         echo "creating new planet..."
-        planet = emptyPlanet(50, 50)
+        planet = emptyPlanet()
+        planet.generateTerrain()
     else:
-        echo "loading planet from db..."
-        planet = newPlanetFromText(planetText)
+        echo "loading planet from db... (not really)"
+        # planet = newPlanetFromText(planetText)
+        planet = emptyPlanet()
+        planet.generateTerrain()
 
     sessions[token] = newSession(username, planet)
 

@@ -2,14 +2,15 @@
 
 import random, asynchttpserver, asyncdispatch, asyncnet, strformat, strutils, json, db_sqlite, tables
 import websocket
-import living_worldpkg/entity, living_worldpkg/planet, living_worldpkg/vector, living_worldpkg/cell, living_worldpkg/auth,
+import living_worldpkg/types, living_worldpkg/entity, living_worldpkg/planet, living_worldpkg/auth,
        living_worldpkg/command
 
 var dbConnection {.threadvar.}: DbConn
 var clients {.threadvar.}: seq[AsyncWebSocket]
 var sessions {.threadvar.}: TableRef[string, Session]
-var p {.threadvar.}: Planet
 var server: AsyncHttpServer = newAsyncHttpServer()
+
+randomize()
 
 
 proc processRequest(req: Request) {.async, gcsafe.} =
@@ -55,7 +56,6 @@ proc processRequest(req: Request) {.async, gcsafe.} =
 proc main() =
     dbConnection = open("data.db", "", "", "")
     clients = newSeq[AsyncWebSocket]()
-    p = emptyPlanet(50, 50)
     sessions = newTable[string, Session]()
     waitFor server.serve(Port(8000), processRequest)
 

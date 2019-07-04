@@ -1,6 +1,14 @@
-function getCell(planet, x, y) {
-    return planet.cells[x + y * planet.dimensions.x];
+function getCellColor(planet, x, y) {
+    let height = planet.heights[x + y * planet.dimensions.x];
+    if (height < planet.waterLevelHeight) return "#20b6ea";
+    return "#ead76e";
 }
+
+
+function getOrganism(planet, x, y) {
+    return planet.organisms[x + y * planet.dimensions.x];
+}
+
 
 
 function pointerPosition(pos, domNode) {
@@ -18,8 +26,8 @@ function samePlanets(p1, p2) {
     // redraw them
     if (p1 == null || p2 == null) return false;
 
-    let arr1 = p1.cells;
-    let arr2 = p2.cells;
+    let arr1 = p1.heights;
+    let arr2 = p2.heights;
     for (let i = 0; i < arr1.length; i++) {
         if (arr1[i] != arr2[i]) return false;
     }
