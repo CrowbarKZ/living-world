@@ -129,12 +129,10 @@ proc signIn*(conn: DbConn, body: string, sessions: TableRef[string, Session]): J
     if planetText == "":
         echo "creating new planet..."
         planet = emptyPlanet()
-        planet.generateTerrain()
     else:
         echo "loading planet from db... (not really)"
         # planet = newPlanetFromText(planetText)
         planet = emptyPlanet()
-        planet.generateTerrain()
 
     sessions[token] = newSession(username, planet)
 

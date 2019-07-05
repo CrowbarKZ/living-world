@@ -1,5 +1,6 @@
 nimcache/
 build/
+tmp/
 
 # sqlite database
 server/data.db

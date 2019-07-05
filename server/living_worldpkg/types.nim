@@ -1,8 +1,8 @@
 import random, times
 
-const planetHeight*: uint8 = uint8.high
-const planetWidth*: uint8 = uint8.high
-const planetSize*: uint16 = planetHeight.int * planetWidth.int
+const planetHeight*: uint16= uint8.high.uint16 + 1
+const planetWidth*: uint16 = uint8.high.uint16 + 1
+const planetSize*: uint32 = uint16.high.uint32 + 1
 
 type
     # ecs - managers
@@ -34,3 +34,13 @@ type
         paused*: bool
 
     Planet* = ref PlanetObj
+
+
+when isMainModule:
+    echo planetHeight
+    echo planetSize
+    let a: uint8 = 2.uint8
+
+    echo a
+    echo a + 1.uint8
+    echo a + 255.uint8

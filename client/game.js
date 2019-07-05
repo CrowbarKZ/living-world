@@ -1,14 +1,3 @@
-const scale = 12;
-const pollInterval = 500;  // ms
-
-let sheepImg = new Image(); sheepImg.src = "/assets/Sheep_001.svg";
-let grassImg = new Image(); grassImg.src = "/assets/Grass_001.svg"
-const entity_images = {
-    "grass": grassImg,
-    "sheep": sheepImg,
-}
-
-
 class Game {
     // encapsulates main clinet side logic
     // client polls server for the world data every pollInterval seconds

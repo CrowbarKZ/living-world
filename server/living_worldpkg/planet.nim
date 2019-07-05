@@ -40,15 +40,12 @@ proc emptyPlanet*(): Planet =
         paused: false,
     )
 
-
-proc generateTerrain*(p: Planet) {.discardable.} =
     ## assign height between 0 and 1000 value to each cell
-    let seed = p.generator.rand(uint32.high).uint32
-    let noise = newNoise(seed.uint32, 1, 0.5)
-    for y in 0.uint8..<planetHeight:
-        for x in 0.uint8..<planetWidth:
-            echo x, " ", y, " ", x.uint16 + y.uint16 * planetWidth
-            p.heights[x.uint16 + y.uint16 * planetWidth] = (noise.perlin(x.int, y.int) * 10000).round.int
+    let noiseSeed = result.generator.rand(uint32.high).uint32
+    let noise = newNoise(noiseSeed.uint32, 1, 0.5)
+    for y in 0.uint8..<uint8.high:
+        for x in 0.uint8..<uint8.high:
+            result.heights[x.uint16 + y.uint16 * planetWidth] = (noise.perlin(x.int, y.int) * 10000).round.int
 
 
 proc pause*(p: Planet) {.discardable.} =
@@ -63,6 +60,8 @@ proc unpause*(p: Planet) {.discardable.} =
 proc step(p: Planet) {.discardable.} =
     inc(p.age)
     growGrass(p)
+    spawnSheep(p)
+    roam(p)
 
     # process existing entities
     # var i: int = 0
@@ -100,7 +99,7 @@ proc process*(p: Planet) {.discardable.} =
     if numsteps > 1:
         echo "processing steps ", numsteps
 
-    for i in 0..<numsteps*10000:
+    for i in 0..<numsteps:
         step(p)
     p.lastProcessed = newNow
 
@@ -126,18 +125,18 @@ proc process*(p: Planet) {.discardable.} =
 
 when isMainModule:
     import sequtils
-    let t0 = cpuTime()
 
     var p: Planet = emptyPlanet()
-    p.generateTerrain()
-    # echo planetSize
-    # echo p.heights
+    echo planetSize
+    echo p.heights
 
+    var t0 = cpuTime()
     for i in 0..200000:
         if i mod 100 == 0:
             let notZero = filter(p.idx, proc(x: uint16): bool =
                 x != 0)
-            echo "processing step = ", i, " num organisms = ", notZero.len
+            echo "processing step = ", i, " num organisms = ", notZero.len, " time taken = ", cpuTime() - t0
+            t0 = cpuTime()
         step(p)
 
-    # echo cpuTime() - t0
+    # echo
