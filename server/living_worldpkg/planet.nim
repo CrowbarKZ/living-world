@@ -1,22 +1,35 @@
 import times, random, math, json
 import perlin
-import types, entity, system
+import types, entity, actions
 
 const timeFmt = "yyyy-MM-dd HH:mm:ss"
 const oneDay: Duration = initDuration(days=1)
 const msPerRound = 500
 
 
+proc getStorageJson*(p: Planet): JsonNode =
+    result = %*{
+        "age": p.age,
+        "waterLevelHeight": p.waterLevelHeight,
+        "heights": p.heights,
+        "organisms": p.organisms,
+        "entityIds": p.entityIds,
+        "lastProcessed": p.lastProcessed.format(timeFmt),
+        "paused": p.paused,
+        "trackedEntityId": p.trackedEntityId,
+    }
+
+
 proc getRenderJson*(p: Planet): JsonNode =
     var organismsNode = newJArray()
 
     for i in 0.uint16..<planetSize:
-        if p.idx[i] != 0:
-            organismsNode.add(%p.organisms[p.idx[i]].kind)
+        if p.entityIds[i] != 0:
+            organismsNode.add(%p.organisms[p.entityIds[i]].kind)
         else:
             organismsNode.add(newJNull())
 
-    return %*{
+    result = %*{
         "dimensions": {"x": planetWidth, "y": planetHeight},
         "age": p.age,
         "waterLevelHeight": p.waterLevelHeight,
@@ -25,6 +38,16 @@ proc getRenderJson*(p: Planet): JsonNode =
         "lastProcessed": p.lastProcessed.format(timeFmt),
         "paused": p.paused
     }
+
+    if p.trackedEntityId != 0:
+        let tracked = p.organisms[p.trackedEntityId]
+        result["tracked"] = %*{
+            "id": p.trackedEntityId,
+            "kind": tracked.kind,
+            "energy": tracked.energy,
+            "age": tracked.age,
+            "freeIds": p.entityManager.releasedIds,
+        }
 
 
 proc emptyPlanet*(): Planet =
@@ -38,13 +61,14 @@ proc emptyPlanet*(): Planet =
         waterLevelHeight: 4000,
         lastProcessed: now().utc,
         paused: false,
+        trackedEntityId: 0,
     )
 
     ## assign height between 0 and 1000 value to each cell
     let noiseSeed = result.generator.rand(uint32.high).uint32
     let noise = newNoise(noiseSeed.uint32, 1, 0.5)
-    for y in 0.uint8..<uint8.high:
-        for x in 0.uint8..<uint8.high:
+    for y in 0.uint8..uint8.high:
+        for x in 0.uint8..uint8.high:
             result.heights[x.uint16 + y.uint16 * planetWidth] = (noise.perlin(x.int, y.int) * 10000).round.int
 
 
@@ -59,9 +83,9 @@ proc unpause*(p: Planet) {.discardable.} =
 
 proc step(p: Planet) {.discardable.} =
     inc(p.age)
-    growGrass(p)
+    spawnGrass(p)
     spawnSheep(p)
-    roam(p)
+    processExistingOrganisms(p)
 
     # process existing entities
     # var i: int = 0
@@ -89,11 +113,12 @@ proc process*(p: Planet) {.discardable.} =
 
     let newNow: DateTime = now().utc
     var dt: Duration = newNow - p.lastProcessed
-    if dt > oneDay:
-        dt = oneDay
 
     let numsteps = (dt.inMilliseconds.int / msPerRound).round.int
     if numsteps == 0:
+        return
+
+    if numsteps > 10000:
         return
 
     if numsteps > 1:
@@ -112,8 +137,8 @@ proc process*(p: Planet) {.discardable.} =
 #         result = emptyPlanet(node["dimensions"]["x"].getInt, node["dimensions"]["y"].getInt)
 #         result.lastProcessed = parse(node["lastProcessed"].getStr, timeFmt, utc())
 #         echo result.lastProcessed
-#         for idx, c in node["cells"].getElems:
-#             result.cells[idx].kind = parseEnum[CellKind](c.getStr)
+#         for entityIds, c in node["cells"].getElems:
+#             result.cells[entityIds].kind = parseEnum[CellKind](c.getStr)
 #         for n in node["entities"].getElems:
 #             let e: Entity = newEntityFromJson(n)
 #             result.addEntity(e)
@@ -131,9 +156,9 @@ when isMainModule:
     echo p.heights
 
     var t0 = cpuTime()
-    for i in 0..200000:
+    for i in 0..100000:
         if i mod 100 == 0:
-            let notZero = filter(p.idx, proc(x: uint16): bool =
+            let notZero = filter(p.entityIds, proc(x: uint16): bool =
                 x != 0)
             echo "processing step = ", i, " num organisms = ", notZero.len, " time taken = ", cpuTime() - t0
             t0 = cpuTime()

@@ -1,3 +1,4 @@
+import sets
 import types
 
 ## Entity (of ecs)
@@ -12,7 +13,8 @@ func newEntityManager*(): EntityManager =
 
 proc newEntity*(em: EntityManager): uint16 =
     if em.releasedIds.len > 0:
-        return em.releasedIds.pop()
+        result = em.releasedIds.pop()
+        return result
     else:
         if em.firstFreeId >= planetSize:
             raise newException(IndexError, "No free entity ids left")

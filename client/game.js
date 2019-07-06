@@ -56,6 +56,10 @@ class Game {
                 this.planet = this.newPlanet;
                 this.newPlanet = response.data;
                 if (!samePlanets(this.planet, this.newPlanet)) this.redrawBackground = true;
+
+                if (this.planet && this.planet.tracked) {
+                    responseContainer.value = JSON.stringify(this.planet.tracked, null, 4);
+                }
             } else {
                 let beauty = JSON.stringify(response.data, null, 4)
                 responseContainer.value = beauty;
@@ -64,10 +68,14 @@ class Game {
 
         // set mouse events
         this.canvasEntity.onmousedown = e => {
+            responseContainer.value = "";
             let pos = pointerPosition(e, this.canvasEntity);
-            let cmd = {"name": toolSelect.value, "x": pos.x, "y": pos.y}
-            if (toolSelect.value == "change_cell") cmd["kind"] = 2
-            if (toolSelect.value == "create_entity") cmd["kind"] = 1
+            console.log(pos);
+            let idx = pos.x + pos.y * this.planet.dimensions.x;
+            let data = {idx:  idx}
+            if (toolSelect.value == "change_cell") data["kind"] = 2
+            if (toolSelect.value == "create_entity") data["kind"] = 1
+            let cmd = {name: toolSelect.value, token: token, data: data}
             ws.send(JSON.stringify(cmd));
         };
     }

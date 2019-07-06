@@ -1,4 +1,4 @@
-import random, times
+import random, times, json
 
 const planetHeight*: uint16= uint8.high.uint16 + 1
 const planetWidth*: uint16 = uint8.high.uint16 + 1
@@ -20,6 +20,7 @@ type
         kind: OrganismKind
         energy: int
         age: int
+        direction: int
 
     # main datastructure, singleton per player
     PlanetObj = object
@@ -29,11 +30,21 @@ type
         waterLevelHeight*: int
         heights*: array[planetSize, int]
         organisms*: array[planetSize, Organism]
-        idx*: array[planetSize, uint16]
+        entityIds*: array[planetSize, uint16]
         lastProcessed*: DateTime
         paused*: bool
+        trackedEntityId*: uint16
 
     Planet* = ref PlanetObj
+
+
+func `%`*(o: Organism): JsonNode =
+    return %*{
+        "kind": o.kind.int,
+        "energy": o.energy,
+        "age": o.age,
+        "direction": o.direction,
+    }
 
 
 when isMainModule:

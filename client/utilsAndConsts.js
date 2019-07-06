@@ -10,13 +10,13 @@ const entity_images = {
 
 // terrain
 const landMaxHeight = 10000
+const landSnowyHeight = 7000
 const landSoilRGB = [255, 223, 163]
 const landRockyRGB = [171, 91, 0]
-const landSnowyRGB = [255, 255, 255]
-const landSnowyThreshold = 0.8
+const landLowSnowRGB = [230,230,230]
+const landHighSnowRGB = [255, 255, 255]
 const waterShallowRGB = [150, 227, 224]
 const waterDeepRGB = [0, 66, 110]
-
 
 
 // Interpolates two [r,g,b] colors and returns an [r,g,b] of the result
@@ -36,19 +36,19 @@ function getCellColor(planet, x, y) {
     let result, factor, color1, color2;
     let height = planet.heights[x + y * planet.dimensions.x];
 
-    if (height < planet.waterLevelHeight) {
+    if (height <= planet.waterLevelHeight) {
         factor = height / planet.waterLevelHeight;
         color1 = [...waterDeepRGB];
         color2 = [...waterShallowRGB];
+    } else if (height <= landSnowyHeight) {
+        factor = (height - planet.waterLevelHeight) / (landSnowyHeight - planet.waterLevelHeight);
+        color1 = [...landSoilRGB];
+        color2 = [...landRockyRGB];
     } else {
-        factor = height / landMaxHeight;
-        if (factor < landSnowyThreshold) {
-            color1 = [...landSoilRGB];
-            color2 = [...landRockyRGB];
-        } else {
-            color1 = [...landRockyRGB];
-            color2 = [...landSnowyRGB];
-        }
+        factor = (height - landSnowyHeight) / (landMaxHeight - landSnowyHeight);
+        console.log(factor);
+        color1 = [...landLowSnowRGB];
+        color2 = [...landHighSnowRGB];
     }
 
     result = color1;

@@ -1,5 +1,6 @@
-- sheep should not walk on water. They also should eat grass
+- They also should eat grass
 - sheep breeding
+- optimization - rework bg redraw check; redraw entities only when needed
 - more consistent terrain coloring. Tie grass growing height threshold to snowy threshold
 - fix save/load
 

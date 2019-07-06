@@ -1,5 +1,5 @@
 import json, tables, db_sqlite
-import types, auth, planet
+import types, auth, planet, actions
 
 
 type
@@ -52,10 +52,17 @@ proc processCommand*(conn: DbConn, commandStr: string, sessions: TableRef[string
         # of "change_cell":
         #     let pos: Vector2 = (command["x"].getInt, command["y"].getInt)
         #     p.setCellKind(command["kind"].getInt.CellKind, pos)
-        # of "create_entity":
-        #     let pos: Vector2 = (command["x"].getInt, command["y"].getInt)
-        #     let kind: EntityKind = command["kind"].getInt.EntityKind;
-        #     p.createEntity(kind, pos)
+        of "track_entity":
+            let idx: uint16 = command.data["idx"].getInt.uint16
+            var p: Planet = sessions[command.token].planet
+            p.trackedEntityId = p.entityIds[idx]
+            return response("info", true, %("entity tracking started for id = " & $p.trackedEntityId))
+        of "create_entity":
+            let idx: uint16 = command.data["idx"].getInt.uint16
+            let kind: OrganismKind = command.data["kind"].getInt.OrganismKind;
+            var p: Planet = sessions[command.token].planet
+            p.spawnEntityAt(kind, idx)
+            return response("info", true, %"entity created")
         else:
             echo "unknown command: ", commandStr
             return response("info", false, %"unknown_command")

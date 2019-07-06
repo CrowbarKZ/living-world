@@ -1,7 +1,8 @@
 div#app {
     position: relative;
-    height: 1200px;
-    width: 1200px;
+    height: 600px;
+    width: 600px;
+    overflow: scroll;
 }
 
 canvas { position: absolute; top: 0; left: 0; }
